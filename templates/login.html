@@ -1,0 +1,3741 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School ERP Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap");
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #6366f1;
+        --primary-dark: #4f46e5;
+        --primary-light: #818cf8;
+        --secondary: #8b5cf6;
+        --success: #10b981;
+        --danger: #ef4444;
+        --warning: #f59e0b;
+        --info: #3b82f6;
+        --sidebar-bg: #0f172a;
+        --sidebar-hover: #1e293b;
+        --text-primary: #0f172a;
+        --text-secondary: #64748b;
+        --border-color: #e2e8f0;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+      }
+
+      body {
+        font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        overflow-x: hidden;
+        position: relative;
+        color: var(--text-primary);
+        line-height: 1.6;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(
+            circle at 20% 50%,
+            rgba(99, 102, 241, 0.2),
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 80%,
+            rgba(139, 92, 246, 0.2),
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 40% 20%,
+            rgba(236, 72, 153, 0.15),
+            transparent 40%
+          );
+        pointer-events: none;
+        z-index: 0;
+        animation: gradientShift 15s ease infinite;
+      }
+
+      @keyframes gradientShift {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
+      /* Sidebar Styles */
+      .sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 280px;
+        height: 100vh;
+        background: var(--sidebar-bg);
+        color: #fff;
+        overflow-y: auto;
+        padding: 0;
+        box-shadow: var(--shadow-xl), 4px 0 24px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .sidebar::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .sidebar::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .sidebar::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.5);
+        border-radius: 3px;
+        transition: background 0.3s;
+      }
+
+      .sidebar::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.7);
+      }
+
+      .sidebar-header {
+        padding: 32px 24px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.15) 0%,
+          rgba(139, 92, 246, 0.15) 100%
+        );
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .sidebar-header:hover {
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.2) 0%,
+          rgba(139, 92, 246, 0.2) 100%
+        );
+      }
+
+      .sidebar-header h4 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: #fff;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        letter-spacing: -0.025em;
+      }
+
+      .sidebar-header h4 i {
+        font-size: 1.75rem;
+        color: var(--primary-light);
+        filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.4));
+      }
+
+      .sidebar-header .subtitle {
+        font-size: 0.75rem;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        font-weight: 600;
+      }
+
+      .menu-section {
+        padding: 24px 16px 8px;
+      }
+
+      .menu-section h5 {
+        font-size: 0.7rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 1.2px;
+        margin-bottom: 12px;
+        padding-left: 12px;
+        font-weight: 700;
+      }
+
+      .menu-item {
+        display: flex;
+        align-items: center;
+        padding: 12px 16px;
+        color: #cbd5e1;
+        text-decoration: none;
+        border-radius: 10px;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-bottom: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.9375rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .menu-item::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 3px;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+      }
+
+      .menu-item:hover {
+        background: var(--sidebar-hover);
+        color: #fff;
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+      }
+
+      .menu-item:hover::before {
+        transform: scaleY(1);
+      }
+
+      .menu-item.active {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        color: #fff;
+        box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+        transform: translateX(4px);
+      }
+
+      .menu-item.active::before {
+        transform: scaleY(1);
+      }
+
+      .menu-item i {
+        width: 20px;
+        margin-right: 12px;
+        font-size: 1rem;
+        text-align: center;
+        transition: transform 0.3s ease;
+      }
+
+      .menu-item:hover i,
+      .menu-item.active i {
+        transform: scale(1.1);
+      }
+
+      /* Content Area */
+      .content {
+        margin-left: 280px;
+        padding: 32px;
+        min-height: 100vh;
+        position: relative;
+        z-index: 1;
+      }
+
+      .top-bar {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 28px 36px;
+        margin-bottom: 32px;
+        box-shadow: var(--shadow-lg), 0 0 40px rgba(255, 255, 255, 0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .top-bar::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(
+          90deg,
+          var(--primary) 0%,
+          var(--secondary) 50%,
+          var(--primary) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmer 3s linear infinite;
+      }
+
+      @keyframes shimmer {
+        0% {
+          background-position: -200% 0;
+        }
+        100% {
+          background-position: 200% 0;
+        }
+      }
+
+      .top-bar h2 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--text-primary);
+        margin: 0;
+        letter-spacing: -0.025em;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 8px 16px 8px 8px;
+        background: rgba(99, 102, 241, 0.05);
+        border-radius: 50px;
+        transition: all 0.3s ease;
+      }
+
+      .user-info:hover {
+        background: rgba(99, 102, 241, 0.1);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+      }
+
+      .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1.25rem;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        position: relative;
+      }
+
+      .user-avatar::after {
+        content: "";
+        position: absolute;
+        inset: -3px;
+        border-radius: 50%;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        opacity: 0.3;
+        filter: blur(8px);
+        z-index: -1;
+      }
+
+      .user-details {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .user-name {
+        font-weight: 600;
+        font-size: 0.9375rem;
+        color: var(--text-primary);
+        line-height: 1.2;
+      }
+
+      .user-role {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+        font-weight: 500;
+      }
+
+      /* Content Card */
+      .content-card {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        border-radius: 20px;
+        padding: 36px;
+        box-shadow: var(--shadow-lg);
+        animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border-color);
+      }
+
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(30px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      /* Buttons */
+      .btn {
+        font-weight: 600;
+        border-radius: 12px;
+        padding: 12px 24px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        font-size: 0.9375rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .btn::before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+      }
+
+      .btn:hover::before {
+        width: 300px;
+        height: 300px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        color: white;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(99, 102, 241, 0.4);
+        background: linear-gradient(
+          135deg,
+          var(--primary-dark) 0%,
+          var(--secondary) 100%
+        );
+      }
+
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+
+      .btn-secondary {
+        background: #64748b;
+        color: #fff;
+      }
+
+      .btn-secondary:hover {
+        background: #475569;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(100, 116, 139, 0.3);
+      }
+
+      .btn-link {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+        padding: 8px 0;
+        transition: all 0.2s ease;
+      }
+
+      .btn-link:hover {
+        color: var(--primary-dark);
+        text-decoration: underline;
+      }
+
+      /* Form Controls */
+      .form-control,
+      .form-select {
+        border-radius: 12px;
+        border: 2px solid var(--border-color);
+        padding: 14px 18px;
+        transition: all 0.3s ease;
+        font-size: 0.9375rem;
+        background: #fff;
+        font-weight: 500;
+      }
+
+      .form-control:focus,
+      .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+        background: #fff;
+      }
+
+      .form-label {
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 8px;
+        font-size: 0.875rem;
+      }
+
+      /* Tables */
+      .table {
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        background: #fff;
+      }
+
+      .table thead {
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        color: white;
+      }
+
+      .table thead th {
+        padding: 18px 24px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.8px;
+        border: none;
+      }
+
+      .table tbody td {
+        padding: 18px 24px;
+        vertical-align: middle;
+        border-color: var(--border-color);
+        font-size: 0.9375rem;
+        font-weight: 500;
+      }
+
+      .table tbody tr {
+        transition: all 0.2s ease;
+        background: white;
+      }
+
+      .table tbody tr:hover {
+        background: #f8fafc;
+        transform: scale(1.01);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      }
+
+      /* Stats Grid */
+      .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+      }
+
+      .stat-card {
+        background: white;
+        padding: 32px;
+        border-radius: 20px;
+        box-shadow: var(--shadow-md);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .stat-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(
+          90deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        opacity: 0;
+        transition: opacity 0.3s ease;
+      }
+
+      .stat-card::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(
+          circle,
+          rgba(99, 102, 241, 0.05) 0%,
+          transparent 70%
+        );
+        opacity: 0;
+        transition: opacity 0.4s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+      }
+
+      .stat-card:hover::before {
+        opacity: 1;
+      }
+
+      .stat-card:hover::after {
+        opacity: 1;
+      }
+
+      .stat-card .icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        margin-bottom: 20px;
+        transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        z-index: 1;
+      }
+
+      .stat-card:hover .icon {
+        transform: scale(1.1) rotate(5deg);
+      }
+
+      .stat-card h3 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text-primary);
+        letter-spacing: -0.025em;
+        position: relative;
+        z-index: 1;
+      }
+
+      .stat-card p {
+        color: var(--text-secondary);
+        margin: 8px 0 0;
+        font-size: 0.9375rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+      }
+
+      /* Login Styles */
+      .text-primary {
+        color: #667eea !important;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .text-primary:hover {
+        text-decoration: underline;
+      }
+      .login-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 20px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .login-card {
+        background: rgba(255, 255, 255, 0.98);
+        backdrop-filter: blur(20px);
+        border-radius: 24px;
+        padding: 48px;
+        max-width: 480px;
+        width: 100%;
+        box-shadow: var(--shadow-xl), 0 0 60px rgba(99, 102, 241, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        animation: slideUp 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .login-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(
+          90deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateY(40px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .login-card h2 {
+        text-align: center;
+        margin-bottom: 36px;
+        font-weight: 800;
+        font-size: 2rem;
+        color: var(--text-primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+      }
+
+      .login-card h2 i {
+        font-size: 2.25rem;
+        background: linear-gradient(
+          135deg,
+          var(--primary) 0%,
+          var(--secondary) 100%
+        );
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        filter: drop-shadow(0 2px 8px rgba(99, 102, 241, 0.3));
+      }
+
+      /* OTP Inputs */
+      .otp-inputs {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        margin: 28px 0;
+      }
+
+      .otp-input {
+        width: 60px;
+        height: 60px;
+        text-align: center;
+        font-size: 1.5rem;
+        font-weight: 700;
+        border: 2px solid var(--border-color);
+        border-radius: 14px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #fff;
+      }
+
+      .otp-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        outline: none;
+        transform: scale(1.08);
+        background: linear-gradient(
+          135deg,
+          rgba(99, 102, 241, 0.02) 0%,
+          rgba(139, 92, 246, 0.02) 100%
+        );
+      }
+
+      .timer {
+        text-align: center;
+        font-size: 0.9375rem;
+        color: var(--text-secondary);
+        margin: 16px 0;
+        font-weight: 600;
+      }
+
+      .resend-btn {
+        background: none;
+        border: none;
+        color: var(--primary);
+        font-weight: 700;
+        cursor: pointer;
+        padding: 0;
+        transition: all 0.2s ease;
+      }
+
+      .resend-btn:hover:not(:disabled) {
+        color: var(--primary-dark);
+        text-decoration: underline;
+        transform: scale(1.05);
+      }
+
+      .resend-btn:disabled {
+        color: #94a3b8;
+        cursor: not-allowed;
+      }
+
+      /* Alerts */
+      .alert {
+        border-radius: 14px;
+        border: none;
+        padding: 18px 24px;
+        box-shadow: var(--shadow-sm);
+        font-weight: 500;
+        font-size: 0.9375rem;
+        border-left: 4px solid;
+      }
+
+      .alert i {
+        margin-right: 10px;
+        font-size: 1.125rem;
+      }
+
+      .alert-success {
+        background: #d1fae5;
+        color: #065f46;
+        border-left-color: var(--success);
+      }
+
+      .alert-danger {
+        background: #fee2e2;
+        color: #991b1b;
+        border-left-color: var(--danger);
+      }
+
+      .alert-info {
+        background: #dbeafe;
+        color: #1e40af;
+        border-left-color: var(--info);
+      }
+
+      .alert-warning {
+        background: #fef3c7;
+        color: #92400e;
+        border-left-color: var(--warning);
+      }
+
+      /* Badges */
+      .badge {
+        border-radius: 10px;
+        padding: 6px 14px;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        letter-spacing: 0.025em;
+      }
+
+      .bg-success {
+        background: var(--success) !important;
+      }
+
+      .bg-danger {
+        background: var(--danger) !important;
+      }
+
+      .bg-warning {
+        background: var(--warning) !important;
+        color: #fff !important;
+      }
+
+      .bg-primary {
+        background: var(--primary) !important;
+      }
+
+      .bg-secondary {
+        background: #6b7280 !important;
+      }
+
+      /* Cards */
+      .card {
+        border: none;
+        border-radius: 18px;
+        box-shadow: var(--shadow-md);
+        transition: all 0.3s ease;
+        border: 1px solid var(--border-color);
+        overflow: hidden;
+      }
+
+      .card:hover {
+        transform: translateY(-6px);
+        box-shadow: var(--shadow-lg);
+      }
+
+      .card-body {
+        padding: 28px;
+      }
+
+      .card-title {
+        font-weight: 700;
+        color: var(--text-primary);
+        margin-bottom: 12px;
+        font-size: 1.125rem;
+      }
+
+      /* Loading Spinner */
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .text-muted {
+        color: var(--text-secondary) !important;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
+        .sidebar {
+          transform: translateX(-100%);
+        }
+
+        .sidebar.active {
+          transform: translateX(0);
+        }
+
+        .content {
+          margin-left: 0;
+          padding: 20px;
+        }
+
+        .top-bar {
+          padding: 20px 24px;
+          border-radius: 16px;
+        }
+
+        .top-bar h2 {
+          font-size: 1.5rem;
+        }
+
+        .content-card {
+          padding: 24px;
+          border-radius: 16px;
+        }
+
+        .stats-grid {
+          grid-template-columns: 1fr;
+          gap: 16px;
+        }
+
+        .otp-inputs {
+          gap: 8px;
+        }
+
+        .otp-input {
+          width: 48px;
+          height: 48px;
+          font-size: 1.25rem;
+        }
+
+        .login-card {
+          padding: 32px 24px;
+          border-radius: 20px;
+        }
+
+        .login-card h2 {
+          font-size: 1.75rem;
+        }
+      }
+
+      /* Custom scrollbar for content area */
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.3);
+        border-radius: 5px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.5);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="login-container" id="loginContainer">
+      <div id="loginScreen" class="login-card">
+        <h2><i class="fas fa-graduation-cap"></i> School ERP Login</h2>
+        <div id="loginAlert" class="alert alert-danger d-none"></div>
+        <form id="loginForm">
+          <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <input
+              type="email"
+              class="form-control"
+              id="loginEmail"
+              required
+              placeholder="Enter your email"
+            />
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="loginPassword"
+              required
+              placeholder="Enter your password"
+            />
+          </div>
+          <button type="submit" class="btn btn-primary w-100">
+            <span id="loginBtnText">Continue</span>
+            <span id="loginLoading" class="loading d-none"></span>
+          </button>
+        </form>
+        <div class="text-center mt-3">
+          <small class="text-muted">
+            Don't have an account?
+            <a href="login" id="signupLink" class="text-primary">Sign up</a>
+          </small>
+        </div>
+        <div class="text-center mt-2">
+          <small class="text-muted">
+            example: <strong>admin@fairviewschoolng.com</strong> /
+            <strong>admin123</strong>
+          </small>
+        </div>
+      </div>
+
+      <div id="otpScreen" class="login-card d-none">
+        <h2><i class="fas fa-envelope"></i> Verify OTP</h2>
+        <p class="text-center text-muted">
+          Enter the 6-digit code sent to <strong id="otpEmail"></strong>
+        </p>
+        <div id="otpAlert" class="alert alert-danger d-none"></div>
+        <div class="otp-inputs">
+          <input type="text" maxlength="1" class="otp-input" id="otp1" />
+          <input type="text" maxlength="1" class="otp-input" id="otp2" />
+          <input type="text" maxlength="1" class="otp-input" id="otp3" />
+          <input type="text" maxlength="1" class="otp-input" id="otp4" />
+          <input type="text" maxlength="1" class="otp-input" id="otp5" />
+          <input type="text" maxlength="1" class="otp-input" id="otp6" />
+        </div>
+        <div class="timer" id="otpTimer"></div>
+        <button id="verifyOtpBtn" class="btn btn-primary w-100 mt-3">
+          <span id="verifyBtnText">Verify OTP</span>
+          <span id="verifyLoading" class="loading d-none"></span>
+        </button>
+        <div class="text-center mt-3">
+          <small class="text-muted">
+            Didn't receive code?
+            <button class="resend-btn" id="resendBtn" disabled>
+              Resend OTP
+            </button>
+          </small>
+        </div>
+        <button class="btn btn-link w-100 mt-2" id="backBtn">
+          Back to Login
+        </button>
+      </div>
+    </div>
+
+    <div id="dashboardScreen" class="d-none">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h4><i class="fas fa-graduation-cap"></i> Fairview ERP</h4>
+          <div class="subtitle">Management System</div>
+        </div>
+
+        <!-- Dynamic menu container - JavaScript will populate this based on user role -->
+        <div id="sidebarMenu">
+          <!-- Default menu items (will be replaced by JavaScript based on role) -->
+          <div class="menu-section">
+            <h5>Main</h5>
+            <a class="menu-item active" data-endpoint="dashboard">
+              <i class="fas fa-home"></i> Dashboard
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Authentication</h5>
+            <a class="menu-item" data-endpoint="register">
+              <i class="fas fa-user-plus"></i> Register User
+            </a>
+            <a class="menu-item" data-endpoint="profile">
+              <i class="fas fa-user"></i> My Profile
+            </a>
+            <a class="menu-item" data-endpoint="logout">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Students</h5>
+            <a class="menu-item" data-endpoint="students">
+              <i class="fas fa-users"></i> All Students
+            </a>
+            <a class="menu-item" data-endpoint="add-student">
+              <i class="fas fa-user-plus"></i> Add Student
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Teachers</h5>
+            <a class="menu-item" data-endpoint="teachers">
+              <i class="fas fa-chalkboard-teacher"></i> All Teachers
+            </a>
+            <a class="menu-item" data-endpoint="add-teacher">
+              <i class="fas fa-user-plus"></i> Add Teacher
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Academic</h5>
+            <a class="menu-item" data-endpoint="classes">
+              <i class="fas fa-door-open"></i> Classes
+            </a>
+            <a class="menu-item" data-endpoint="subjects">
+              <i class="fas fa-book"></i> Subjects
+            </a>
+            <a class="menu-item" data-endpoint="exams">
+              <i class="fas fa-file-alt"></i> Exams
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Attendance</h5>
+            <a class="menu-item" data-endpoint="mark-attendance">
+              <i class="fas fa-calendar-check"></i> Mark Attendance
+            </a>
+            <a class="menu-item" data-endpoint="view-attendance">
+              <i class="fas fa-eye"></i> View Attendance
+            </a>
+          </div>
+          <div class="menu-section">
+            <h5>Finance</h5>
+            <a class="menu-item" data-endpoint="fee-structures">
+              <i class="fas fa-money-bill-wave"></i> Fee Structures
+            </a>
+            <a class="menu-item" data-endpoint="fee-payments">
+              <i class="fas fa-credit-card"></i> Fee Payments
+            </a>
+            <a class="menu-item" data-endpoint="pending-fees">
+              <i class="fas fa-exclamation-circle"></i> Pending Fees
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="top-bar">
+          <h2 id="pageTitle">Dashboard</h2>
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">A</div>
+            <div class="user-details">
+              <div class="user-name" id="userName">Admin User</div>
+              <small class="user-role" id="userRole">Administrator</small>
+            </div>
+          </div>
+        </div>
+        <div id="contentArea" class="content-card"></div>
+      </div>
+    </div>
+
+    <!-- Customer Care widget -->
+    <style>
+      .cc-widget {
+        position: fixed;
+        right: 20px;
+        bottom: 24px;
+        z-index: 9999;
+        font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial;
+      }
+      .cc-button {
+        background: #6803db;
+        color: #530ed3;
+        border-radius: 50%;
+        width: 56px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 6px 18px rgba(37, 211, 102, 0.18);
+        cursor: pointer;
+        border: none;
+      }
+      .cc-panel {
+        position: fixed;
+        right: 92px;
+        bottom: 24px;
+        width: 320px;
+        max-width: calc(100vw - 120px);
+        background: #fff;
+        border-radius: 12px;
+        padding: 12px;
+        box-shadow: 0 20px 40px rgba(2, 6, 23, 0.12);
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .cc-panel.visible {
+        display: flex;
+      }
+      .cc-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .cc-header h4 {
+        margin: 0;
+        font-size: 1rem;
+        color: #0f172a;
+      }
+      .cc-body {
+        font-size: 0.9rem;
+        color: #374151;
+      }
+      .cc-actions {
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+      .cc-actions .cc-link {
+        text-decoration: none;
+        background: #25d366;
+        color: white;
+        padding: 8px 12px;
+        border-radius: 8px;
+        font-weight: 700;
+      }
+      .cc-close {
+        background: transparent;
+        border: none;
+        font-size: 18px;
+        color: #6b7280;
+        cursor: pointer;
+      }
+      @media (max-width: 520px) {
+        .cc-panel {
+          right: 12px;
+          left: 12px;
+          width: auto;
+        }
+      }
+    </style>
+
+    <div class="cc-widget" aria-hidden="false">
+      <button id="ccToggleBtn" class="cc-button" aria-label="Customer care">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <path
+            d="M21 15a2 2 0 0 1-2 2h-1l-3 3v-3H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v9z"
+            stroke="white"
+            stroke-width="1.4"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          />
+        </svg>
+      </button>
+
+      <div
+        id="ccPanel"
+        class="cc-panel"
+        role="dialog"
+        aria-label="Customer care panel"
+      >
+        <div class="cc-header">
+          <h4>Customer Care</h4>
+          <button id="ccCloseBtn" class="cc-close" aria-label="Close">×</button>
+        </div>
+        <div class="cc-body">
+          <p>
+            Need help with Fairview School ERP? Chat with our support on
+            WhatsApp and we'll respond shortly.
+          </p>
+        </div>
+        <div class="cc-actions">
+          <a id="ccWhatsAppBtn" class="cc-link" href="#">WhatsApp Us</a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      (function () {
+        const CC_PHONE_RAW = "08036745916";
+        function toInternational(s) {
+          s = (s || "").trim();
+          if (!s) return s;
+          if (s.startsWith("+")) return s.slice(1);
+          if (s.startsWith("0")) return "234" + s.slice(1);
+          return s;
+        }
+        const CC_INT = toInternational(CC_PHONE_RAW);
+
+        const toggleBtn = document.getElementById("ccToggleBtn");
+        const panel = document.getElementById("ccPanel");
+        const closeBtn = document.getElementById("ccCloseBtn");
+        const waBtn = document.getElementById("ccWhatsAppBtn");
+
+        function toggle() {
+          panel.classList.toggle("visible");
+        }
+        function openWhatsApp(pretext) {
+          const txt = encodeURIComponent(
+            pretext || "Hello, I need help with Fairview School ERP."
+          );
+          const url = `https://wa.me/${CC_INT}?text=${txt}`;
+          window.open(url, "_blank");
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener("click", () => toggle());
+        if (closeBtn)
+          closeBtn.addEventListener("click", () =>
+            panel.classList.remove("visible")
+          );
+        if (waBtn)
+          waBtn.addEventListener("click", (e) => {
+            e.preventDefault();
+            openWhatsApp();
+          });
+      })();
+    </script>
+
+    <!-- Modals for child progress and admin actions -->
+    <!-- Child Progress Modal -->
+    <div
+      class="modal fade"
+      id="childProgressModal"
+      tabindex="-1"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Child Progress</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div id="childProgressAlert"></div>
+            <div class="mb-3">
+              <label class="form-label">Select Child</label>
+              <select id="childSelect" class="form-select">
+                <option value="">Loading...</option>
+              </select>
+            </div>
+            <div id="childProgressContent">
+              Select a child to load progress.
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin: Add Fee Structure Modal -->
+    <div class="modal fade" id="addFeeModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Fee Structure</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div id="addFeeAlert"></div>
+            <form id="addFeeForm">
+              <div class="mb-3">
+                <label class="form-label">Academic Year</label>
+                <input name="academic_year" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Class ID</label>
+                <input name="class_id" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Amount (NGN)</label>
+                <input
+                  name="amount"
+                  type="number"
+                  class="form-control"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea
+                  name="description"
+                  class="form-control"
+                  rows="2"
+                ></textarea>
+              </div>
+              <div class="text-end">
+                <button class="btn btn-primary">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin: Add Event Modal -->
+    <div class="modal fade" id="addEventModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add School Event</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div id="addEventAlert"></div>
+            <form id="addEventForm">
+              <div class="mb-3">
+                <label class="form-label">Title</label>
+                <input name="title" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Date</label>
+                <input name="date" type="date" class="form-control" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Details</label>
+                <textarea
+                  name="details"
+                  class="form-control"
+                  rows="3"
+                ></textarea>
+              </div>
+              <div class="text-end">
+                <button class="btn btn-primary">Create Event</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // Cleaned role-based script
+      const API_BASE = "http://localhost:8000";
+      const appState = { token: null, user: null, email: null, password: null };
+
+      function showScreen(screen) {
+        const loginContainer = document.getElementById("loginContainer");
+        const loginScreen = document.getElementById("loginScreen");
+        const otpScreen = document.getElementById("otpScreen");
+        const dashboardScreen = document.getElementById("dashboardScreen");
+
+        if (screen === "dashboardScreen") {
+          if (loginContainer) loginContainer.remove();
+          dashboardScreen.classList.remove("d-none");
+          dashboardScreen.style.display = "block";
+        } else if (screen === "otpScreen") {
+          loginScreen.classList.add("d-none");
+          otpScreen.classList.remove("d-none");
+        } else {
+          loginScreen.classList.remove("d-none");
+          otpScreen.classList.add("d-none");
+        }
+        window.scrollTo(0, 0);
+      }
+
+      function showAlert(id, msg, type = "danger") {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = msg;
+        el.className = `alert alert-${type}`;
+        el.classList.remove("d-none");
+        setTimeout(() => el.classList.add("d-none"), 5000);
+      }
+
+      async function apiRequest(endpoint, options = {}) {
+        const headers = {
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        };
+        if (appState.token) headers.Authorization = `Bearer ${appState.token}`;
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+          ...options,
+          headers,
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // Ensure we throw a readable string message (detail may be object/array)
+          const detail = data.detail || data.message || "Request failed";
+          const msg =
+            typeof detail === "string" ? detail : JSON.stringify(detail);
+          throw new Error(msg);
+        }
+        return data;
+      }
+
+      function updateUserInfo() {
+        if (!appState.user) return;
+        document.getElementById("userName").textContent =
+          appState.user.full_name || appState.user.name || "User";
+        document.getElementById("userRole").textContent =
+          appState.user.role || "";
+        document.getElementById("userAvatar").textContent = (
+          appState.user.full_name ||
+          appState.user.name ||
+          "?"
+        )
+          .charAt(0)
+          .toUpperCase();
+      }
+
+      // OTP helpers
+      const otpInputs = Array.from(document.querySelectorAll(".otp-input"));
+      let otpTimer = null;
+      function startOtpTimer(seconds = 300) {
+        clearInterval(otpTimer);
+        let rem = seconds;
+        document.getElementById("resendBtn").disabled = true;
+        otpTimer = setInterval(() => {
+          rem--;
+          const m = Math.floor(rem / 60);
+          const s = String(rem % 60).padStart(2, "0");
+          document.getElementById(
+            "otpTimer"
+          ).textContent = `Code expires in ${m}:${s}`;
+          if (rem <= 0) {
+            clearInterval(otpTimer);
+            document.getElementById("otpTimer").textContent = "Code expired";
+            document.getElementById("resendBtn").disabled = false;
+          }
+        }, 1000);
+      }
+      otpInputs.forEach((input, i) => {
+        input.addEventListener("input", (e) => {
+          if (e.target.value.length === 1 && otpInputs[i + 1])
+            otpInputs[i + 1].focus();
+        });
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !e.target.value && otpInputs[i - 1])
+            otpInputs[i - 1].focus();
+        });
+        input.addEventListener("paste", (e) => {
+          e.preventDefault();
+          const t = (e.clipboardData.getData("text") || "").slice(0, 6);
+          t.split("").forEach((ch, idx) => {
+            if (otpInputs[idx]) otpInputs[idx].value = ch;
+          });
+          if (t.length === 6 && otpInputs[5]) otpInputs[5].focus();
+        });
+      });
+
+      // Login -> request OTP
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value.trim();
+          const password = document.getElementById("loginPassword").value;
+          document.getElementById("loginBtnText").classList.add("d-none");
+          document.getElementById("loginLoading").classList.remove("d-none");
+          try {
+            const resp = await fetch(`${API_BASE}/request-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password, purpose: "login" }),
+            });
+            if (!resp.ok)
+              throw new Error(
+                (await resp.json()).detail || "Failed to request OTP"
+              );
+            appState.email = email;
+            appState.password = password;
+            document.getElementById("otpEmail").textContent = email;
+            showScreen("otpScreen");
+            startOtpTimer();
+            otpInputs[0].focus();
+          } catch (err) {
+            showAlert("loginAlert", err.message || String(err));
+          } finally {
+            document.getElementById("loginBtnText").classList.remove("d-none");
+            document.getElementById("loginLoading").classList.add("d-none");
+          }
+        });
+
+      // Verify OTP -> exchange for token
+      async function completeLoginWithOtp() {
+        const otp = otpInputs.map((i) => i.value).join("");
+        if (otp.length !== 6) {
+          showAlert("otpAlert", "Enter all 6 digits");
+          return;
+        }
+        document.getElementById("verifyBtnText").classList.add("d-none");
+        document.getElementById("verifyLoading").classList.remove("d-none");
+        try {
+          const v = await fetch(`${API_BASE}/verify-otp`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: appState.email, otp }),
+          });
+          if (!v.ok) throw new Error((await v.json()).detail || "Invalid OTP");
+          const form = new URLSearchParams();
+          form.append("username", appState.email);
+          form.append("password", appState.password);
+          const tokenRes = await fetch(`${API_BASE}/token`, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: form,
+          });
+          if (!tokenRes.ok)
+            throw new Error((await tokenRes.json()).detail || "Login failed");
+          const tokenData = await tokenRes.json();
+          appState.token = tokenData.access_token;
+          appState.user = tokenData.user_info || tokenData.user || {};
+          clearInterval(otpTimer);
+          showScreen("dashboardScreen");
+          updateUserInfo();
+          loadDashboardByRole(appState.user);
+          localStorage.setItem("currentUser", JSON.stringify(appState.user));
+          try {
+            localStorage.setItem("currentToken", appState.token);
+          } catch (e) {}
+        } catch (err) {
+          showAlert("otpAlert", err.message || String(err));
+        } finally {
+          document.getElementById("verifyBtnText").classList.remove("d-none");
+          document.getElementById("verifyLoading").classList.add("d-none");
+        }
+      }
+      document
+        .getElementById("verifyOtpBtn")
+        .addEventListener("click", completeLoginWithOtp);
+
+      document
+        .getElementById("resendBtn")
+        .addEventListener("click", async () => {
+          try {
+            const resp = await fetch(`${API_BASE}/request-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: appState.email,
+                password: appState.password,
+                purpose: "login",
+              }),
+            });
+            if (!resp.ok) throw new Error("Failed to resend OTP");
+            otpInputs.forEach((i) => (i.value = ""));
+            otpInputs[0].focus();
+            startOtpTimer();
+            showAlert("otpAlert", "OTP resent", "success");
+          } catch (err) {
+            showAlert("otpAlert", err.message || String(err));
+          }
+        });
+      document.getElementById("backBtn").addEventListener("click", () => {
+        clearInterval(otpTimer);
+        otpInputs.forEach((i) => (i.value = ""));
+        showScreen("loginScreen");
+      });
+
+      // ---------------------------
+      // Role-based loader (parents, students, staff, admin)
+      // ---------------------------
+      function loadDashboardByRole(user) {
+        if (!user) return renderError("No user data");
+        const role = (user.role || "").toLowerCase();
+        const menu = document.getElementById("sidebarMenu");
+        const content = document.getElementById("contentArea"); // clear any existing content to prevent residual text or stray renderings
+        content.innerHTML = "";
+        menu.innerHTML = "";
+        const sections = [];
+        sections.push({
+          title: "Main",
+          items: [
+            { endpoint: "dashboard", icon: "fa-home", label: "Dashboard" },
+          ],
+        });
+        if (role === "admin") {
+          sections.push({
+            title: "Authentication",
+            items: [
+              {
+                endpoint: "register",
+                icon: "fa-user-plus",
+                label: "Register User",
+              },
+              { endpoint: "profile", icon: "fa-user", label: "My Profile" },
+              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
+            ],
+          });
+          sections.push({
+            title: "Students",
+            items: [
+              { endpoint: "students", icon: "fa-users", label: "All Students" },
+              {
+                endpoint: "add-student",
+                icon: "fa-user-plus",
+                label: "Add Student",
+              },
+            ],
+          });
+          sections.push({
+            title: "Teachers",
+            items: [
+              {
+                endpoint: "teachers",
+                icon: "fa-chalkboard-teacher",
+                label: "All Teachers",
+              },
+              {
+                endpoint: "add-teacher",
+                icon: "fa-user-plus",
+                label: "Add Teacher",
+              },
+            ],
+          });
+          sections.push({
+            title: "Academic",
+            items: [
+              { endpoint: "classes", icon: "fa-door-open", label: "Classes" },
+              { endpoint: "subjects", icon: "fa-book", label: "Subjects" },
+              { endpoint: "exams", icon: "fa-file-alt", label: "Exams" },
+            ],
+          });
+          sections.push({
+            title: "Attendance",
+            items: [
+              {
+                endpoint: "mark-attendance",
+                icon: "fa-calendar-check",
+                label: "Mark Attendance",
+              },
+              {
+                endpoint: "view-attendance",
+                icon: "fa-eye",
+                label: "View Attendance",
+              },
+            ],
+          });
+          sections.push({
+            title: "Finance",
+            items: [
+              {
+                endpoint: "fee-structures",
+                icon: "fa-money-bill-wave",
+                label: "Fee Structures",
+              },
+              {
+                endpoint: "fee-payments",
+                icon: "fa-credit-card",
+                label: "Fee Payments",
+              },
+              {
+                endpoint: "pending-fees",
+                icon: "fa-exclamation-circle",
+                label: "Pending Fees",
+              },
+              {
+                endpoint: "payments",
+                icon: "fa-wallet",
+                label: "Payments",
+              },
+            ],
+          });
+          renderAdminDashboard();
+        } else if (role === "staff" || role === "teacher") {
+          sections.push({
+            title: "Academic",
+            items: [
+              { endpoint: "exams", icon: "fa-clipboard-check", label: "Exams" },
+              {
+                endpoint: "add-exam",
+                icon: "fa-plus-circle",
+                label: "Add Exam",
+              },
+            ],
+          });
+          sections.push({
+            title: "Account",
+            items: [
+              { endpoint: "profile", icon: "fa-user", label: "My Profile" },
+              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
+            ],
+          });
+          renderStaffDashboard(user);
+        } else if (role === "student") {
+          sections.push({
+            title: "Academic",
+            items: [
+              {
+                endpoint: "exams",
+                icon: "fa-clipboard-check",
+                label: "My Exams",
+              },
+            ],
+          });
+          sections.push({
+            title: "Account",
+            items: [
+              { endpoint: "profile", icon: "fa-user", label: "My Profile" },
+              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
+            ],
+          });
+          renderStudentDashboard(user);
+        } else if (role === "parent") {
+          sections.push({
+            title: "Payments",
+            items: [
+              {
+                endpoint: "make-payment",
+                icon: "fa-wallet",
+                label: "Make Payment",
+              },
+              {
+                endpoint: "payment-status",
+                icon: "fa-receipt",
+                label: "Payment Status",
+              },
+            ],
+          });
+          sections.push({
+            title: "School",
+            items: [
+              {
+                endpoint: "events",
+                icon: "fa-calendar-alt",
+                label: "School Events",
+              },
+            ],
+          });
+          sections.push({
+            title: "Account",
+            items: [
+              { endpoint: "profile", icon: "fa-user-cog", label: "My Profile" },
+              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
+            ],
+          });
+          renderParentDashboard(user);
+        } else {
+          renderError(
+            "Invalid role detected. Please contact the administrator."
+          );
+          return;
+        }
+
+        // build menu
+        sections.forEach((sec) => {
+          const secEl = document.createElement("div");
+          secEl.className = "menu-section";
+          secEl.innerHTML = `<h5>${sec.title}</h5>`;
+          sec.items.forEach((item) => {
+            const a = document.createElement("a");
+            a.href = "#";
+            a.className = "menu-item";
+            a.setAttribute("data-endpoint", item.endpoint);
+            a.innerHTML = `<i class="fas ${item.icon}"></i> ${item.label}`;
+            secEl.appendChild(a);
+          });
+          menu.appendChild(secEl);
+        });
+        attachMenuHandlers();
+        document.getElementById("pageTitle").textContent = "Dashboard Overview";
+      }
+
+      function attachMenuHandlers() {
+        document.querySelectorAll(".menu-item").forEach((item) => {
+          item.addEventListener("click", (e) => {
+            e.preventDefault();
+            document
+              .querySelectorAll(".menu-item")
+              .forEach((i) => i.classList.remove("active"));
+            item.classList.add("active");
+            const endpoint = item.getAttribute("data-endpoint");
+            const titles = {
+              dashboard: "Dashboard Overview",
+              register: "Register User",
+              profile: "My Profile",
+              exams: "Exams",
+              "add-exam": "Add Exam",
+              "make-payment": "Make Payment",
+              "payment-status": "Payment Status",
+              events: "School Events",
+              students: "All Students",
+              "add-student": "Add Student",
+              teachers: "All Teachers",
+              "add-teacher": "Add Teacher",
+              classes: "Classes",
+              subjects: "Subjects",
+              "mark-attendance": "Mark Attendance",
+              "view-attendance": "View Attendance",
+              "fee-structures": "Fee Structures",
+              "fee-payments": "Fee Payments",
+              "pending-fees": "Pending Fees",
+              payments: "Payments",
+            };
+            document.getElementById("pageTitle").textContent =
+              titles[endpoint] || "Dashboard";
+            if (endpointHandlers[endpoint]) endpointHandlers[endpoint]();
+            else renderError("This section is under development.");
+          });
+        });
+      }
+
+      const endpointHandlers = {
+        dashboard: () => {
+          const role = (appState.user?.role || "").toLowerCase();
+          if (role === "admin") renderAdminDashboard();
+          else if (role === "student") renderStudentDashboard(appState.user);
+          else if (role === "parent") renderParentDashboard(appState.user);
+          else renderStaffDashboard(appState.user);
+        },
+        logout: () => {
+          appState.token = null;
+          appState.user = null;
+          localStorage.removeItem("currentUser");
+          location.reload();
+        },
+        profile: async () => {
+          try {
+            const data = await apiRequest("/auth/me");
+            renderProfile(data);
+          } catch (err) {
+            renderError("Failed to load profile: " + err.message);
+          }
+        },
+        register: () => renderRegisterForm(),
+        exams: async () => {
+          try {
+            const data = await apiRequest("/exams");
+            renderExams(data);
+          } catch (err) {
+            renderError("Failed to load exams: " + err.message);
+          }
+        },
+        "add-exam": () => {
+          const r = (appState.user?.role || "").toLowerCase();
+          if (!["admin", "staff", "teacher"].includes(r)) {
+            renderError("Access Denied");
+            return;
+          }
+          renderAddExamForm();
+        },
+        "make-payment": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "parent") {
+            renderError("Access Denied: Parents only");
+            return;
+          }
+          renderMakePaymentForm();
+        },
+        "payment-status": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "parent") {
+            renderError("Access Denied: Parents only");
+            return;
+          }
+          renderPaymentStatus();
+        },
+        events: () => renderEvents(),
+        students: async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/students");
+            renderStudents(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "add-student": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "admin") {
+            renderError("Access Denied");
+            return;
+          }
+          renderAddStudentForm();
+        },
+        teachers: async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/teachers");
+            renderTeachers(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "add-teacher": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "admin") {
+            renderError("Access Denied");
+            return;
+          }
+          renderAddTeacherForm();
+        },
+        classes: async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/classes");
+            renderClasses(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        subjects: async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/subjects");
+            renderSubjects(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "mark-attendance": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "admin") {
+            renderError("Access Denied");
+            return;
+          }
+          renderMarkAttendance();
+        },
+        "view-attendance": () => {
+          if ((appState.user?.role || "").toLowerCase() !== "admin") {
+            renderError("Access Denied");
+            return;
+          }
+          renderViewAttendance();
+        },
+        "fee-structures": async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/fee-structures");
+            renderFeeStructures(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "fee-payments": async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/fee-payments");
+            renderFeePayments(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "pending-fees": async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const data = await apiRequest("/fee-payments/pending");
+            renderPendingFees(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        payments: async () => {
+          try {
+            if ((appState.user?.role || "").toLowerCase() !== "admin") {
+              renderError("Access Denied");
+              return;
+            }
+            const res = await apiRequest("/payments");
+            // server returns { total, page, per_page, payments: [...] }
+            const list = Array.isArray(res) ? res : res.payments || [];
+            renderPayments(list, res);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+      };
+
+      // minimal dashboards and renderers reused
+      function renderAdminDashboard() {
+        document.getElementById("pageTitle").textContent = "Admin Dashboard";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-start">
+            <div style="flex:1">
+              <div class="stats-grid">
+                <div class="stat-card"><div class="icon" style="background:rgba(99,102,241,0.1);color:#6366f1"><i class="fas fa-users"></i></div><h3 id="totalStudents">-</h3><p>Total Students</p></div>
+                <div class="stat-card"><div class="icon" style="background:rgba(245,158,11,0.1);color:#f59e0b"><i class="fas fa-chalkboard-teacher"></i></div><h3 id="totalTeachers">-</h3><p>Total Teachers</p></div>
+                <div class="stat-card"><div class="icon" style="background:rgba(16,185,129,0.1);color:#10b981"><i class="fas fa-door-open"></i></div><h3 id="totalClasses">-</h3><p>Total Classes</p></div>
+                <div class="stat-card"><div class="icon" style="background:rgba(239,68,68,0.1);color:#ef4444"><i class="fas fa-exclamation-circle"></i></div><h3 id="pendingFees">-</h3><p>Pending Fees</p></div>
+              </div>
+              <div class="alert alert-info mt-4"><i class="fas fa-info-circle"></i> Welcome to the School ERP Admin Dashboard. You have full access to all features.</div>
+            </div>
+            <div style="width:260px; margin-left:20px">
+              <div class="card p-3 mb-3">
+                <h6 class="mb-3">Quick Actions</h6>
+                <button class="btn btn-sm btn-primary w-100 mb-2" onclick="showAddFeeModal()"><i class="fas fa-money-bill-wave me-2"></i> Add Fee Structure</button>
+                <button class="btn btn-sm btn-secondary w-100 mb-2" onclick="showAddEventModal()"><i class="fas fa-calendar-plus me-2"></i> Add Event</button>
+                <button class="btn btn-sm btn-outline-primary w-100" onclick="endpointHandlers['fee-structures']()"><i class="fas fa-list me-2"></i> View Fee Structures</button>
+              </div>
+            </div>
+          </div>
+        `;
+        loadDashboardStats();
+      }
+      function renderStaffDashboard(user) {
+        document.getElementById("pageTitle").textContent = "Staff Dashboard";
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<div class="alert alert-success"><i class="fas fa-user-check"></i> <strong>Welcome, ${user.full_name}!</strong></div><div class="card mt-4"><div class="card-body"><h5 class="card-title"><i class="fas fa-info-circle"></i> Your Access</h5><p class="card-text">As a staff member, you can view exams and create new exams.</p></div></div>`;
+      }
+      function renderStudentDashboard(user) {
+        document.getElementById("pageTitle").textContent = "Student Dashboard";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="alert alert-success"><i class="fas fa-graduation-cap"></i> <strong>Welcome back, ${user.full_name}!</strong></div>
+          <div class="card mt-4"><div class="card-body"><h5 class="card-title"><i class="fas fa-info-circle"></i> Your Portal</h5><p class="card-text">You can view your exams and edit your profile.</p>
+            <div class="mt-3"><button class="btn btn-primary btn-sm" onclick="showStudentProgress()"><i class="fas fa-chart-line me-2"></i> View My Progress</button></div>
+          </div></div>
+        `;
+      }
+      function renderParentDashboard(user) {
+        document.getElementById("pageTitle").textContent = "Parent Dashboard";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="alert alert-info"><i class="fas fa-users"></i> <strong>Welcome, ${user.full_name}!</strong></div>
+          <div class="row mt-4">
+            <div class="col-md-4 mb-3">
+              <div class="card text-center h-100">
+                <div class="card-body">
+                  <div class="icon mb-3" style="background:rgba(99,102,241,0.1);color:#6366f1;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;"><i class="fas fa-wallet fa-2x"></i></div>
+                  <h5 class="card-title">Make Payments</h5>
+                  <p class="card-text">Pay school fees online securely</p>
+                  <button class="btn btn-primary btn-sm" onclick="endpointHandlers['make-payment']()">Go to Payments</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card text-center h-100">
+                <div class="card-body">
+                  <div class="icon mb-3" style="background:rgba(16,185,129,0.1);color:#10b981;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;"><i class="fas fa-receipt fa-2x"></i></div>
+                  <h5 class="card-title">Payment Status</h5>
+                  <p class="card-text">View your payment history</p>
+                  <button class="btn btn-success btn-sm" onclick="endpointHandlers['payment-status']()">Check Status</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card text-center h-100">
+                <div class="card-body">
+                  <div class="icon mb-3" style="background:rgba(245,158,11,0.1);color:#f59e0b;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;"><i class="fas fa-calendar-alt fa-2x"></i></div>
+                  <h5 class="card-title">School Events</h5>
+                  <p class="card-text">View upcoming school events</p>
+                  <button class="btn btn-warning btn-sm" onclick="endpointHandlers['events']()">View Events</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-12 mt-3">
+              <div class="card p-3 text-center">
+                <h5 class="card-title">Child Progress</h5>
+                <p class="card-text">View your child's exam and grade progress.</p>
+                <div class="d-flex justify-content-center gap-2">
+                  <input id="childIdInput" class="form-control form-control-sm" placeholder="Enter Child ID" style="max-width:320px;" />
+                  <button class="btn btn-primary btn-sm" onclick="viewChildById()"><i class="fas fa-search me-2"></i> View</button>
+                  <button class="btn btn-outline-primary btn-sm" onclick="showChildProgressModal()"><i class="fas fa-list me-2"></i> Select</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Allow parent to enter a child ID and view progress (will be authorized by server)
+      async function viewChildById() {
+        const input = document.getElementById("childIdInput");
+        const id = input && input.value && input.value.trim();
+        if (!id) {
+          showAlert("loginAlert", "Enter a valid Child ID", "danger");
+          return;
+        }
+        try {
+          const res = await apiRequest(
+            `/grades/student/${encodeURIComponent(id)}`
+          );
+          const content = document.getElementById("contentArea");
+          if (!res || (Array.isArray(res) && res.length === 0)) {
+            content.innerHTML = `<div class="alert alert-info">No grades found for this student.</div>`;
+            return;
+          }
+          // render grades (array of grade objects)
+          const rows = (Array.isArray(res) ? res : res.grades || [])
+            .map(
+              (g) =>
+                `<tr><td>${g.exam?.name || g.exam_id || "Exam"}</td><td>${
+                  g.marks_obtained ?? "-"
+                }</td><td>${g.percentage ?? "-"}</td><td>${
+                  g.grade_letter ?? "-"
+                }</td><td>${g.is_passed ? "Yes" : "No"}</td></tr>`
+            )
+            .join("");
+          content.innerHTML = `<h3><i class="fas fa-chart-line"></i> Child Progress</h3><hr><div class="table-responsive"><table class="table"><thead><tr><th>Exam</th><th>Marks</th><th>%</th><th>Grade</th><th>Passed</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      async function loadDashboardStats() {
+        try {
+          const data = await apiRequest("/dashboard/stats");
+          document.getElementById("totalStudents").textContent =
+            data.total_students || 0;
+          document.getElementById("totalTeachers").textContent =
+            data.total_teachers || 0;
+          document.getElementById("totalClasses").textContent =
+            data.total_classes || 0;
+          document.getElementById("pendingFees").textContent =
+            data.pending_fee_students || 0;
+        } catch (err) {
+          console.error("stats error", err);
+        }
+      }
+
+      function renderError(msg) {
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> ${msg}</div>`;
+      }
+
+      function renderProfile(data) {
+        const canEdit = true;
+        document.getElementById("pageTitle").textContent = "My Profile";
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3><i class="fas fa-user"></i> My Profile</h3><hr><div class="card"><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>Name:</strong> ${
+          data.full_name
+        }</p><p><strong>Email:</strong> ${
+          data.email
+        }</p><p><strong>Role:</strong> <span class="badge bg-primary">${
+          data.role
+        }</span></p><p><strong>Phone:</strong> ${
+          data.phone || "N/A"
+        }</p><p><strong>Status:</strong> ${
+          data.is_active
+            ? '<span class="badge bg-success">Active</span>'
+            : '<span class="badge bg-danger">Inactive</span>'
+        }</p></div></div>${
+          canEdit
+            ? `<hr><h5>Update Profile</h5><form id="updateProfileForm"><div class="row"><div class="col-md-6 mb-3"><label class="form-label">Full Name</label><input class="form-control" name="full_name" value="${
+                data.full_name || ""
+              }" required></div><div class="col-md-6 mb-3"><label class="form-label">Phone</label><input class="form-control" name="phone" value="${
+                data.phone || ""
+              }"></div><div class="col-12"><button class="btn btn-primary">Save</button></div></div></form>`
+            : ""
+        }</div></div>`;
+        if (canEdit) {
+          document
+            .getElementById("updateProfileForm")
+            ?.addEventListener("submit", async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.target);
+              const payload = {};
+              for (const [k, v] of fd.entries())
+                if (v.trim() !== "") payload[k] = v;
+              try {
+                await apiRequest("/auth/me", {
+                  method: "PUT",
+                  body: JSON.stringify(payload),
+                });
+                showAlert("loginAlert", "Profile updated", "success");
+                endpointHandlers.profile();
+              } catch (err) {
+                showAlert("loginAlert", err.message || String(err));
+              }
+            });
+        }
+      }
+
+      async function renderExams(data) {
+        document.getElementById("pageTitle").textContent = "Exams";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info"><i class="fas fa-info-circle"></i> No exams found.</div>`;
+          return;
+        }
+        const canAdd = ["admin", "staff", "teacher"].includes(
+          (appState.user?.role || "").toLowerCase()
+        );
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<div class="d-flex justify-content-between align-items-center mb-4"><h3><i class="fas fa-file-alt"></i> Exams (${
+          data.length
+        })</h3>${
+          canAdd
+            ? `<button class="btn btn-primary" onclick="endpointHandlers['add-exam']()"><i class="fas fa-plus"></i> Add Exam</button>`
+            : ""
+        }</div><div class="table-responsive"><table class="table"><thead><tr><th>Name</th><th>Date</th><th>Total Marks</th><th>Passing Marks</th></tr></thead><tbody>${data
+          .map(
+            (ex) =>
+              `<tr><td>${ex.name || "N/A"}</td><td>${
+                ex.date ? new Date(ex.date).toLocaleDateString() : "N/A"
+              }</td><td>${ex.total_marks || 0}</td><td>${
+                ex.passing_marks || 0
+              }</td></tr>`
+          )
+          .join("")}</tbody></table></div>`;
+      }
+
+      function renderAddExamForm() {
+        document.getElementById("pageTitle").textContent = "Add Exam";
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3><i class="fas fa-plus-circle"></i> Add New Exam</h3><hr><div id="addExamAlert"></div><form id="addExamForm"><div class="row"><div class="col-md-6 mb-3"><label class="form-label">Exam Name *</label><input type="text" class="form-control" name="name" required></div><div class="col-md-6 mb-3"><label class="form-label">Date *</label><input type="date" class="form-control" name="date" required></div><div class="col-md-6 mb-3"><label class="form-label">Total Marks *</label><input type="number" class="form-control" name="total_marks" required min="0"></div><div class="col-md-6 mb-3"><label class="form-label">Passing Marks *</label><input type="number" class="form-control" name="passing_marks" required min="0"></div><div class="col-12"><button class="btn btn-primary">Create Exam</button></div></div></form>`;
+        document
+          .getElementById("addExamForm")
+          ?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = {};
+            for (const [k, v] of fd.entries())
+              if (v.trim() !== "") payload[k] = v;
+            try {
+              await apiRequest("/exams", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
+              document.getElementById(
+                "addExamAlert"
+              ).innerHTML = `<div class="alert alert-success">Exam created.</div>`;
+              e.target.reset();
+            } catch (err) {
+              document.getElementById(
+                "addExamAlert"
+              ).innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+          });
+      }
+
+      // parent pages
+      function renderMakePaymentForm() {
+        document.getElementById("pageTitle").textContent = "Make Payment";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-wallet"></i> Make Payment</h3>
+          <hr>
+          <div id="paymentAlert" class="alert d-none"></div>
+          <form id="paymentForm">
+            <div class="mb-3">
+              <label class="form-label">Payer Name</label>
+              <input type="text" id="payName" class="form-control" value="${
+                (appState.user &&
+                  (appState.user.full_name || appState.user.name)) ||
+                ""
+              }" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Payer Email</label>
+              <input type="email" id="payEmail" class="form-control" value="${
+                (appState.user && appState.user.email) || ""
+              }" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Amount (NGN)</label>
+              <input type="number" id="payAmount" class="form-control" min="50" value="1000" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description (optional)</label>
+              <input type="text" id="payDesc" class="form-control" placeholder="e.g. Termly fees" />
+            </div>
+            <button class="btn btn-primary" id="startPaymentBtn">Pay Now</button>
+          </form>
+        `;
+
+        // attach handler
+        document
+          .getElementById("paymentForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("payName").value.trim();
+            const email = document.getElementById("payEmail").value.trim();
+            const amount = parseInt(
+              document.getElementById("payAmount").value,
+              10
+            );
+            const desc = document.getElementById("payDesc").value.trim();
+            const alertEl = document.getElementById("paymentAlert");
+            alertEl.classList.add("d-none");
+
+            if (!email || !amount || amount <= 0) {
+              alertEl.textContent = "Enter a valid email and amount";
+              alertEl.className = "alert alert-danger";
+              alertEl.classList.remove("d-none");
+              return;
+            }
+
+            try {
+              document.getElementById("startPaymentBtn").disabled = true;
+              const payload = { email, amount, name };
+              const res = await apiRequest("/payments/initialize", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
+
+              // Backend returns payment_url - open it so parent completes payment on Paystack
+              if (res && res.payment_url) {
+                // open in new tab so user can come back to app
+                window.open(res.payment_url, "_blank");
+                alertEl.textContent =
+                  "Payment page opened in a new tab. Complete payment and then use Payment Status to verify using the transaction reference.";
+                alertEl.className = "alert alert-success";
+                alertEl.classList.remove("d-none");
+              } else {
+                throw new Error("Failed to initialize payment");
+              }
+            } catch (err) {
+              const m = err.message || JSON.stringify(err);
+              alertEl.textContent = m;
+              alertEl.className = "alert alert-danger";
+              alertEl.classList.remove("d-none");
+            } finally {
+              document.getElementById("startPaymentBtn").disabled = false;
+            }
+          });
+      }
+      function renderPaymentStatus() {
+        document.getElementById("pageTitle").textContent = "Payment Status";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-receipt"></i> Payment Status</h3>
+          <hr>
+          <div id="verifyAlert" class="alert d-none"></div>
+          <div class="mb-3">
+            <label class="form-label">Transaction Reference</label>
+            <input id="verifyRef" class="form-control" placeholder="Enter transaction reference" />
+          </div>
+          <button class="btn btn-primary" id="verifyRefBtn">Verify Payment</button>
+          <div id="verifyResult" class="mt-3"></div>
+        `;
+
+        document
+          .getElementById("verifyRefBtn")
+          .addEventListener("click", async () => {
+            const ref = document.getElementById("verifyRef").value.trim();
+            const alertEl = document.getElementById("verifyAlert");
+            alertEl.classList.add("d-none");
+            if (!ref) {
+              alertEl.textContent = "Enter a transaction reference to verify";
+              alertEl.className = "alert alert-danger";
+              alertEl.classList.remove("d-none");
+              return;
+            }
+            try {
+              document.getElementById("verifyRefBtn").disabled = true;
+              const res = await apiRequest(
+                `/payments/verify/${encodeURIComponent(ref)}`
+              );
+              document.getElementById(
+                "verifyResult"
+              ).innerHTML = `<pre>${JSON.stringify(res, null, 2)}</pre>`;
+            } catch (err) {
+              alertEl.textContent = err.message || String(err);
+              alertEl.className = "alert alert-danger";
+              alertEl.classList.remove("d-none");
+            } finally {
+              document.getElementById("verifyRefBtn").disabled = false;
+            }
+          });
+      }
+      function renderEvents() {
+        document.getElementById("pageTitle").textContent = "School Events";
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3><i class="fas fa-calendar-alt"></i> School Events</h3><hr><div class="alert alert-info">Upcoming events will appear here.</div>`;
+      }
+
+      // helper UI functions: admin/student/parent interactions
+      function showAddFeeModal() {
+        const m = new bootstrap.Modal(document.getElementById("addFeeModal"));
+        m.show();
+      }
+
+      function showAddEventModal() {
+        const m = new bootstrap.Modal(document.getElementById("addEventModal"));
+        m.show();
+      }
+
+      async function showChildProgressModal() {
+        const modalEl = document.getElementById("childProgressModal");
+        const m = new bootstrap.Modal(modalEl);
+        const select = document.getElementById("childSelect");
+        const content = document.getElementById("childProgressContent");
+        select.innerHTML = `<option value="">Loading...</option>`;
+        content.innerHTML = "Select a child to load progress.";
+        try {
+          // Try to fetch children for the parent
+          const parentId = appState.user?.id;
+          if (!parentId) throw new Error("Parent not available");
+          const children = await apiRequest(
+            `/students?parent_id=${encodeURIComponent(parentId)}`
+          );
+          if (!Array.isArray(children) || children.length === 0) {
+            select.innerHTML = `<option value="">No children found</option>`;
+          } else {
+            select.innerHTML =
+              `<option value="">Select a child</option>` +
+              children
+                .map(
+                  (c) =>
+                    `<option value="${c.id}">${
+                      (c.first_name || "") + " " + (c.last_name || "")
+                    } (${
+                      c.admission_no || c.admissionNo || "ID:" + c.id
+                    })</option>`
+                )
+                .join("");
+            select.addEventListener("change", async function onChange() {
+              const sid = this.value;
+              if (!sid) return;
+              await loadChildProgress(sid);
+            });
+          }
+        } catch (err) {
+          document.getElementById(
+            "childProgressAlert"
+          ).innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
+        m.show();
+      }
+
+      async function loadChildProgress(studentId) {
+        const content = document.getElementById("childProgressContent");
+        content.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><div class="mt-2 text-muted">Loading progress...</div></div>`;
+        try {
+          // Attempt common endpoints, fallback to raw student exams
+          let res = null;
+          try {
+            res = await apiRequest(
+              `/students/${encodeURIComponent(studentId)}/progress`
+            );
+          } catch (e) {}
+          if (!res) {
+            try {
+              res = await apiRequest(
+                `/students/${encodeURIComponent(studentId)}/exams`
+              );
+            } catch (e) {}
+          }
+          // fallback to grades endpoint if exams/progress not present
+          if (!res) {
+            try {
+              res = await apiRequest(
+                `/grades/student/${encodeURIComponent(studentId)}`
+              );
+            } catch (e) {}
+          }
+          if (!res) {
+            content.innerHTML = `<div class="alert alert-info">No progress data available for this student.</div>`;
+            return;
+          }
+          // If res includes exams/progress array, render table; otherwise pretty-print JSON
+          if (Array.isArray(res) || (res.exams && Array.isArray(res.exams))) {
+            const rows = (Array.isArray(res) ? res : res.exams)
+              .map(
+                (ev) =>
+                  `<tr><td>${ev.name || ev.title || "Exam"}</td><td>${
+                    ev.score != null ? ev.score : "-"
+                  }</td><td>${ev.total_marks || ev.total || "-"}</td><td>${
+                    ev.date ? new Date(ev.date).toLocaleDateString() : "-"
+                  }</td></tr>`
+              )
+              .join("");
+            content.innerHTML = `<div class="table-responsive"><table class="table"><thead><tr><th>Exam</th><th>Score</th><th>Total</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            return;
+          }
+          content.innerHTML = `<pre>${JSON.stringify(res, null, 2)}</pre>`;
+        } catch (err) {
+          content.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+        }
+      }
+
+      async function showStudentProgress() {
+        try {
+          const sid = appState.user?.id;
+          if (!sid) throw new Error("Student not available");
+          const res = await apiRequest(
+            `/students/${encodeURIComponent(sid)}/progress`
+          );
+          const content = document.getElementById("contentArea");
+          if (Array.isArray(res) || (res.exams && Array.isArray(res.exams))) {
+            const rows = (Array.isArray(res) ? res : res.exams)
+              .map(
+                (ev) =>
+                  `<tr><td>${ev.name || ev.title || "Exam"}</td><td>${
+                    ev.score != null ? ev.score : "-"
+                  }</td><td>${ev.total_marks || ev.total || "-"}</td><td>${
+                    ev.date ? new Date(ev.date).toLocaleDateString() : "-"
+                  }</td></tr>`
+              )
+              .join("");
+            content.innerHTML = `<h3><i class="fas fa-chart-line"></i> My Progress</h3><hr><div class="table-responsive"><table class="table"><thead><tr><th>Exam</th><th>Score</th><th>Total</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+            return;
+          }
+          content.innerHTML = `<h3><i class="fas fa-chart-line"></i> My Progress</h3><hr><pre>${JSON.stringify(
+            res,
+            null,
+            2
+          )}</pre>`;
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      // wire admin modal submit handlers
+      document
+        .getElementById("addFeeForm")
+        ?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const payload = {};
+          for (const [k, v] of fd.entries())
+            if (String(v).trim() !== "") payload[k] = v;
+          try {
+            await apiRequest("/fee-structures", {
+              method: "POST",
+              body: JSON.stringify(payload),
+            });
+            document.getElementById("addFeeAlert").innerHTML =
+              '<div class="alert alert-success">Fee structure created.</div>';
+            const modal = bootstrap.Modal.getInstance(
+              document.getElementById("addFeeModal")
+            );
+            if (modal) modal.hide();
+            endpointHandlers["fee-structures"]?.();
+          } catch (err) {
+            document.getElementById(
+              "addFeeAlert"
+            ).innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+          }
+        });
+
+      document
+        .getElementById("addEventForm")
+        ?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const fd = new FormData(e.target);
+          const payload = {};
+          // Build payload to match server EventCreate schema:
+          // { title, description, event_type, start_date, end_date, location, organizer }
+          const title = fd.get("title") || "";
+          const dateVal = fd.get("date") || null;
+          const details = fd.get("details") || "";
+          if (!title || !dateVal) {
+            document.getElementById(
+              "addEventAlert"
+            ).innerHTML = `<div class="alert alert-danger">Title and Date are required.</div>`;
+            return;
+          }
+
+          const startISO = new Date(dateVal).toISOString();
+          const payloadToSend = {
+            title: title,
+            description: details,
+            event_type: "general", // default type for admin-created events
+            start_date: startISO,
+            end_date: startISO,
+            location: fd.get("location") || null,
+            organizer:
+              (appState.user &&
+                (appState.user.full_name || appState.user.email)) ||
+              null,
+          };
+
+          try {
+            await apiRequest("/events", {
+              method: "POST",
+              body: JSON.stringify(payloadToSend),
+            });
+            document.getElementById("addEventAlert").innerHTML =
+              '<div class="alert alert-success">Event created.</div>';
+            const modal = bootstrap.Modal.getInstance(
+              document.getElementById("addEventModal")
+            );
+            if (modal) modal.hide();
+            endpointHandlers["events"]?.();
+          } catch (err) {
+            document.getElementById(
+              "addEventAlert"
+            ).innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+          }
+        });
+
+      // sidebar header click
+      document
+        .querySelector(".sidebar-header")
+        ?.addEventListener("click", () => {
+          document
+            .querySelectorAll(".menu-item")
+            .forEach((i) => i.classList.remove("active"));
+          const d = document.querySelector('[data-endpoint="dashboard"]');
+          if (d) d.classList.add("active");
+          endpointHandlers.dashboard();
+        });
+
+      // try restore user from storage
+      try {
+        const saved = JSON.parse(localStorage.getItem("currentUser") || "null");
+        if (saved) {
+          appState.user = saved;
+          updateUserInfo();
+          loadDashboardByRole(appState.user);
+          showScreen("dashboardScreen");
+        }
+      } catch (e) {}
+
+      // Note: add-teacher/student forms are rendered dynamically inside
+      // renderAddTeacherForm / renderAddStudentForm so we don't attach
+      // event listeners to non-existent DOM elements at load time.
+
+      function renderClasses(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-door-open"></i> Classes (${data.length})</h3>
+          <hr>
+          <div class="row">
+            ${data
+              .map(
+                (cls) => `
+              <div class="col-md-4 mb-3">
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title">${cls.name}</h5>
+                    <p class="card-text">
+                      <strong>Level:</strong> ${cls.level || "N/A"}<br>
+                      <strong>Section:</strong> ${cls.section || "N/A"}<br>
+                      <strong>Students:</strong> ${cls.student_count || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+
+      function renderSubjects(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-book"></i> Subjects (${data.length})</h3>
+          <hr>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (subject) => `
+                  <tr>
+                    <td>${subject.name}</td>
+                    <td>${subject.code || "N/A"}</td>
+                    <td>${subject.description || "N/A"}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      // --- Student & Teacher renderers (admin) ---
+      function renderStudents(data) {
+        document.getElementById("pageTitle").textContent = "Students";
+        const content = document.getElementById("contentArea");
+        if (!data || data.length === 0) {
+          content.innerHTML = `
+            <h3><i class="fas fa-users"></i> Students</h3>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div></div>
+              <button class="btn btn-primary" onclick="renderAddStudentForm()"><i class="fas fa-user-plus"></i> Add Student</button>
+            </div>
+            <div class="alert alert-info"><i class="fas fa-info-circle"></i> No students found.</div>
+          `;
+          return;
+        }
+
+        content.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-users"></i> Students (${data.length})</h3>
+            <button class="btn btn-primary" onclick="renderAddStudentForm()"><i class="fas fa-user-plus"></i> Add Student</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Admission No</th>
+                  <th>Class ID</th>
+                  <th>DOB</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (s) => `
+                      <tr>
+                        <td>${
+                          (s.first_name || "") + " " + (s.last_name || "")
+                        }</td>
+                        <td>${s.admission_no || s.admissionNumber || "-"}</td>
+                        <td>${s.class_id || "-"}</td>
+                        <td>${
+                          s.dob ? new Date(s.dob).toLocaleDateString() : "-"
+                        }</td>
+                        <td>
+                          <button class="btn btn-sm btn-secondary" onclick='alert("Implement edit/view")'>View</button>
+                        </td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAddStudentForm() {
+        document.getElementById("pageTitle").textContent = "Add Student";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Add Student</h3>
+          <hr>
+          <div id="addStudentAlert"></div>
+          <form id="addStudentForm">
+            <div class="row">
+              <div class="col-md-6 mb-3"><label class="form-label">First Name</label><input class="form-control" name="first_name" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Last Name</label><input class="form-control" name="last_name" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Student Email</label><input type="email" class="form-control" name="user_email" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Password</label><input type="password" class="form-control" name="user_password" placeholder="min 8 chars" required></div>
+              <div class="col-md-4 mb-3"><label class="form-label">DOB</label><input type="date" class="form-control" name="dob"></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Gender</label><select class="form-select" name="gender"><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Admission No</label><input class="form-control" name="admission_no"></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Class ID</label><input class="form-control" name="class_id"></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Phone</label><input class="form-control" name="phone"></div>
+              <div class="col-12"><button class="btn btn-primary">Create Student</button> <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.students()">Cancel</button></div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("addStudentForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = {};
+            for (const [k, v] of fd.entries())
+              if (v !== null && String(v).trim() !== "") payload[k] = v;
+            const alertDiv = document.getElementById("addStudentAlert");
+            try {
+              await apiRequest("/students", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
+              alertDiv.innerHTML = `<div class="alert alert-success">Student created.</div>`;
+              // refresh list
+              endpointHandlers.students();
+            } catch (err) {
+              alertDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+          });
+      }
+
+      function renderTeachers(data) {
+        document.getElementById("pageTitle").textContent = "Teachers";
+        const content = document.getElementById("contentArea");
+        if (!data || data.length === 0) {
+          content.innerHTML = `
+            <h3><i class="fas fa-chalkboard-teacher"></i> Teachers</h3>
+            <hr>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div></div>
+              <button class="btn btn-primary" onclick="renderAddTeacherForm()"><i class="fas fa-user-plus"></i> Add Teacher</button>
+            </div>
+            <div class="alert alert-info"><i class="fas fa-info-circle"></i> No teachers found.</div>
+          `;
+          return;
+        }
+
+        content.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-chalkboard-teacher"></i> Teachers (${
+              data.length
+            })</h3>
+            <button class="btn btn-primary" onclick="renderAddTeacherForm()"><i class="fas fa-user-plus"></i> Add Teacher</button>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Employee ID</th>
+                  <th>Qualification</th>
+                  <th>Specialization</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (t) => `
+                      <tr>
+                        <td>${
+                          (t.first_name || "") + " " + (t.last_name || "")
+                        }</td>
+                        <td>${t.employee_id || "-"}</td>
+                        <td>${t.qualification || "-"}</td>
+                        <td>${t.specialization || "-"}</td>
+                        <td><button class="btn btn-sm btn-secondary" onclick='alert("Implement edit/view")'>View</button></td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAddTeacherForm() {
+        document.getElementById("pageTitle").textContent = "Add Teacher";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Add Teacher</h3>
+          <hr>
+          <div id="addTeacherAlert"></div>
+          <form id="addTeacherForm">
+            <div class="row">
+              <div class="col-md-6 mb-3"><label class="form-label">First Name</label><input class="form-control" name="first_name" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Last Name</label><input class="form-control" name="last_name" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">User Email</label><input type="email" class="form-control" name="user_email" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Password</label><input type="password" class="form-control" name="user_password" required placeholder="min 8 chars"></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Date of Birth</label><input type="date" class="form-control" name="date_of_birth" required></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Gender</label><select class="form-select" name="gender" required><option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Employee ID</label><input class="form-control" name="employee_id" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Qualification</label><input class="form-control" name="qualification" required></div>
+              <div class="col-md-6 mb-3"><label class="form-label">Specialization</label><input class="form-control" name="specialization"></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Experience Years</label><input type="number" class="form-control" name="experience_years" min="0"></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Joining Date</label><input type="date" class="form-control" name="joining_date" required></div>
+              <div class="col-md-4 mb-3"><label class="form-label">Emergency Contact</label><input class="form-control" name="emergency_contact"></div>
+              <div class="col-12 mb-3"><label class="form-label">Address</label><textarea class="form-control" name="address" rows="2"></textarea></div>
+              <div class="col-12"><button class="btn btn-primary">Create Teacher</button> <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.teachers()">Cancel</button></div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("addTeacherForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = {};
+            for (const [k, v] of fd.entries())
+              if (v !== null && String(v).trim() !== "") payload[k] = v;
+            if (payload.experience_years)
+              payload.experience_years = Number(payload.experience_years);
+            const alertDiv = document.getElementById("addTeacherAlert");
+            try {
+              await apiRequest("/teachers", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
+              alertDiv.innerHTML = `<div class="alert alert-success">Teacher created.</div>`;
+              endpointHandlers.teachers();
+            } catch (err) {
+              alertDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+          });
+      }
+
+      function renderExams(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-file-alt"></i> Exams (${data.length})</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Total Marks</th>
+                    <th>Passing Marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (exam) => `
+                    <tr>
+                      <td>${exam.name || "N/A"}</td>
+                      <td>${
+                        exam.date
+                          ? new Date(exam.date).toLocaleDateString()
+                          : "N/A"
+                      }</td>
+                      <td>${exam.total_marks || 0}</td>
+                      <td>${exam.passing_marks || 0}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-file-alt"></i> Exams</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No exams found.
+            </div>
+          `;
+        }
+      }
+
+      function renderAddExamForm() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-plus-circle"></i> Add New Exam</h3>
+          <hr>
+          <div id="addExamAlert"></div>
+          <form id="addExamForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Exam Name *</label>
+                <input type="text" class="form-control" name="name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date *</label>
+                <input type="date" class="form-control" name="date" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Total Marks *</label>
+                <input type="number" class="form-control" name="total_marks" required min="0">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Passing Marks *</label>
+                <input type="number" class="form-control" name="passing_marks" required min="0">
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Description</label>
+                <textarea class="form-control" name="description" rows="3"></textarea>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save"></i> Create Exam
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.exams()">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("addExamForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            const alertDiv = document.getElementById("addExamAlert");
+
+            try {
+              await apiRequest("/exams", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alertDiv.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show">
+                  <i class="fas fa-check-circle"></i> Exam created successfully!
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              `;
+              e.target.reset();
+            } catch (error) {
+              alertDiv.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show">
+                  <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              `;
+            }
+          });
+      }
+
+      function renderMarkAttendance() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-check"></i> Mark Attendance</h3>
+          <hr>
+          <div id="markAttendanceAlert"></div>
+          <form id="markAttendanceForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Student ID *</label>
+                <input type="text" class="form-control" name="student_id" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Class ID *</label>
+                <input type="text" class="form-control" name="class_id" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date *</label>
+                <input type="date" class="form-control" name="date" required value="${
+                  new Date().toISOString().split("T")[0]
+                }">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Status *</label>
+                <select class="form-select" name="status" required>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                </select>
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Remarks</label>
+                <textarea class="form-control" name="remarks" rows="3"></textarea>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-check"></i> Mark Attendance
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("markAttendanceForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            const alertDiv = document.getElementById("markAttendanceAlert");
+
+            try {
+              await apiRequest("/attendance", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alertDiv.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show">
+                  <i class="fas fa-check-circle"></i> Attendance marked successfully!
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              `;
+              e.target.reset();
+              e.target.date.value = new Date().toISOString().split("T")[0];
+            } catch (error) {
+              alertDiv.innerHTML = `
+                <div class="alert alert-danger alert-dismissible fade show">
+                  <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              `;
+            }
+          });
+      }
+
+      function renderViewAttendance() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-eye"></i> View Attendance</h3>
+          <hr>
+          <form id="viewAttendanceForm" class="mb-4">
+            <div class="row">
+              <div class="col-md-8 mb-3">
+                <label class="form-label">Student ID *</label>
+                <input type="text" class="form-control" name="student_id" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="fas fa-search"></i> Search
+                </button>
+              </div>
+            </div>
+          </form>
+          <div id="attendanceResults"></div>
+        `;
+
+        document
+          .getElementById("viewAttendanceForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const studentId = e.target.student_id.value.trim();
+            const resultsDiv = document.getElementById("attendanceResults");
+
+            resultsDiv.innerHTML = `
+              <div class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Loading attendance records...</p>
+              </div>
+            `;
+
+            try {
+              const data = await apiRequest(`/attendance/student/${studentId}`);
+
+              if (data && data.length !== 0) {
+                resultsDiv.innerHTML = `
+                  <div class="alert alert-success mb-4">
+                    <i class="fas fa-check-circle"></i> Found ${
+                      data.length
+                    } attendance record(s)
+                  </div>
+                  <div class="table-responsive">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          <th>Date</th>
+                          <th>Status</th>
+                          <th>Remarks</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${data
+                          .map((record) => {
+                            let dateStr = record.date || "N/A";
+                            if (record.date) {
+                              try {
+                                dateStr = new Date(
+                                  record.date
+                                ).toLocaleDateString();
+                              } catch (err) {
+                                console.error("Date parse error:", err);
+                              }
+                            }
+
+                            return `
+                              <tr>
+                                <td>${dateStr}</td>
+                                <td>
+                                  <span class="badge ${
+                                    record.status === "present"
+                                      ? "bg-success"
+                                      : record.status === "absent"
+                                      ? "bg-danger"
+                                      : record.status === "late"
+                                      ? "bg-warning"
+                                      : "bg-secondary"
+                                  }">
+                                    ${record.status || "Unknown"}
+                                  </span>
+                                </td>
+                                <td>${record.remarks || "-"}</td>
+                              </tr>
+                            `;
+                          })
+                          .join("")}
+                      </tbody>
+                    </table>
+                  </div>
+                `;
+              } else {
+                resultsDiv.innerHTML = `
+                  <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> No attendance records found for this student.
+                  </div>
+                `;
+              }
+            } catch (error) {
+              console.error("Attendance fetch error:", error);
+              resultsDiv.innerHTML = `
+                <div class="alert alert-danger">
+                  <i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> ${error.message}
+                  <br><small>Please check the Student ID and try again.</small>
+                </div>
+              `;
+            }
+          });
+      }
+
+      function renderFeeStructures(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-money-bill-wave"></i> Fee Structures (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Academic Year</th>
+                    <th>Class</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (fee) => `
+                    <tr>
+                      <td>${fee.academic_year || "N/A"}</td>
+                      <td>${fee.class_id || "N/A"}</td>
+                      <td><strong>₦${(
+                        fee.amount || 0
+                      ).toLocaleString()}</strong></td>
+                      <td>${fee.description || "-"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-money-bill-wave"></i> Fee Structures</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No fee structures found.
+            </div>
+          `;
+        }
+      }
+
+      function renderFeePayments(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-credit-card"></i> Fee Payments (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Amount</th>
+                    <th>Payment Date</th>
+                    <th>Payment Method</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (payment) => `
+                    <tr>
+                      <td>${
+                        payment.student_name || payment.student_id || "N/A"
+                      }</td>
+                      <td><strong>₦${(
+                        payment.amount || 0
+                      ).toLocaleString()}</strong></td>
+                      <td>${
+                        payment.payment_date
+                          ? new Date(payment.payment_date).toLocaleDateString()
+                          : "N/A"
+                      }</td>
+                      <td>${payment.payment_method || "N/A"}</td>
+                      <td>
+                        <span class="badge ${
+                          payment.status === "completed" ||
+                          payment.status === "paid"
+                            ? "bg-success"
+                            : payment.status === "pending"
+                            ? "bg-warning"
+                            : "bg-danger"
+                        }">
+                          ${payment.status || "Unknown"}
+                        </span>
+                      </td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-credit-card"></i> Fee Payments</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No fee payments found.
+            </div>
+          `;
+        }
+      }
+
+      function renderPayments(data, meta) {
+        document.getElementById("pageTitle").textContent = "Payments";
+        const content = document.getElementById("contentArea");
+        const total = (meta && meta.total) || (data && data.length) || 0;
+        if (!data || data.length === 0) {
+          content.innerHTML = `
+            <h3><i class="fas fa-wallet"></i> Payments</h3>
+            <hr>
+            <div class="alert alert-info"><i class="fas fa-info-circle"></i> No payments found.</div>
+          `;
+          return;
+        }
+
+        content.innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-wallet"></i> Payments (${total})</h3>
+            <div>
+              <button class="btn btn-sm btn-primary" id="refreshPaymentsBtn"><i class="fas fa-sync"></i> Refresh</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Parent Email</th>
+                  <th>Amount (NGN)</th>
+                  <th>Reference</th>
+                  <th>Status</th>
+                  <th>Method</th>
+                  <th>Bank</th>
+                  <th>Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (p) => `
+                      <tr>
+                        <td>${p.id}</td>
+                        <td>${
+                          p.parent_name || p.email || p.parent_id || "-"
+                        }</td>
+                        <td><strong>₦${(
+                          p.amount || 0
+                        ).toLocaleString()}</strong></td>
+                        <td>${p.reference || "-"}</td>
+                        <td><span class="badge ${
+                          p.status === "paid"
+                            ? "bg-success"
+                            : p.status === "pending"
+                            ? "bg-warning"
+                            : "bg-danger"
+                        }">${p.status || "-"}</span></td>
+                        <td>${p.payment_method || "-"}</td>
+                        <td>${p.bank || "-"}</td>
+                        <td>${
+                          p.transaction_date
+                            ? new Date(p.transaction_date).toLocaleString()
+                            : "-"
+                        }</td>
+                        <td>
+                          <button class="btn btn-sm btn-outline-secondary me-1" onclick="showPaymentDetail(${
+                            p.id
+                          })">View</button>
+                          <button class="btn btn-sm btn-outline-primary" data-ref="${
+                            p.reference
+                          }" onclick="verifyPaymentAsAdmin('${
+                      p.reference
+                    }', this)">Verify</button>
+                        </td>
+                      </tr>
+                    `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+
+        document
+          .getElementById("refreshPaymentsBtn")
+          .addEventListener("click", () => {
+            endpointHandlers.payments();
+          });
+      }
+
+      async function showPaymentDetail(paymentId) {
+        if (!paymentId) return;
+        try {
+          const res = await apiRequest(`/payments/${paymentId}`);
+          const content = document.getElementById("contentArea");
+          content.innerHTML = `
+            <h3><i class="fas fa-receipt"></i> Payment #${paymentId}</h3>
+            <hr>
+            <div class="mb-3"><button class="btn btn-sm btn-secondary" onclick="endpointHandlers.payments()">Back to list</button></div>
+            <pre>${JSON.stringify(res, null, 2)}</pre>
+          `;
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      async function verifyPaymentAsAdmin(ref, btn) {
+        if (!ref) return;
+        try {
+          if (btn) btn.disabled = true;
+          const res = await apiRequest(
+            `/payments/verify/${encodeURIComponent(ref)}`
+          );
+          showAlert(
+            "loginAlert",
+            "Verify result: " + JSON.stringify(res),
+            "success"
+          );
+          endpointHandlers.payments();
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        } finally {
+          if (btn) btn.disabled = false;
+        }
+      }
+
+      function renderPendingFees(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-exclamation-circle"></i> Pending Fees (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Total Due</th>
+                    <th>Total Paid</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (fee) => `
+                    <tr>
+                      <td>${fee.student_name || "N/A"}</td>
+                      <td>${fee.class_id || "N/A"}</td>
+                      <td>₦${(fee.total_due || 0).toLocaleString()}</td>
+                      <td>₦${(fee.total_paid || 0).toLocaleString()}</td>
+                      <td><strong style="color:var(--danger)">₦${(
+                        fee.balance || 0
+                      ).toLocaleString()}</strong></td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-exclamation-circle"></i> Pending Fees</h3>
+            </div>
+            <div class="alert alert-success">
+              <i class="fas fa-check-circle"></i> No pending fees found. All payments are up to date!
+            </div>
+          `;
+        }
+      }
+
+      function renderRegisterForm() {
+        document.getElementById("pageTitle").textContent = "Register New User";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Register New User</h3>
+          <hr>
+          <div id="registerAlert"></div>
+          <form id="registerForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" name="full_name" required placeholder="Enter full name">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="email" required placeholder="Enter email address">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" name="password" required placeholder="Enter password" minlength="6">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" name="phone" placeholder="Enter phone number">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Role *</label>
+                <select class="form-select" name="role" required>
+                  <option value="">Select Role</option>
+                  <option value="admin">Admin</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="staff">Staff</option>
+                  <option value="student">Student</option>
+                  <option value="parent">Parent</option>
+                </select>
+              </div>
+              <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-user-plus"></i> Register User
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.dashboard()">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("registerForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            const alertDiv = document.getElementById("registerAlert");
+
+            try {
+              await apiRequest("/auth/register", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alertDiv.innerHTML = `
+                <div class="alert alert-success alert-dismissible fade show">
+                  <i class="fas fa-check-circle"></i> User registered successfully!
+                  <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              `;
+              e.target.reset();
+            } catch (error) {
+              alertDiv.innerHTML = `
+                    <div class="alert alert-danger alert-dismissible fade show">
+                      <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+                      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                  `;
+            }
+          });
+      }
+
+      function renderError(message) {
+        document.getElementById("contentArea").innerHTML = `
+                <div class="alert alert-danger">
+                  <i class="fas fa-exclamation-triangle"></i> ${message}
+                </div>
+              `;
+      }
+
+      document
+        .querySelector(".sidebar-header")
+        .addEventListener("click", () => {
+          document
+            .querySelectorAll(".menu-item")
+            .forEach((el) => el.classList.remove("active"));
+          document
+            .querySelector('[data-endpoint="dashboard"]')
+            .classList.add("active");
+          loadDashboard();
+        });
+
+      showScreen("loginScreen");
+    </script>
+  </body>
+</html>

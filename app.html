@@ -1,0 +1,1511 @@
+     const API_BASE = "http://localhost:8000";
+      const appState = { token: null, user: null };
+
+      function showScreen(screen) {
+        const loginContainer = document.getElementById("loginContainer");
+        const loginScreen = document.getElementById("loginScreen");
+        const otpScreen = document.getElementById("otpScreen");
+        const dashboardScreen = document.getElementById("dashboardScreen");
+
+        const modal = document.getElementById("paymentModal");
+  const closeModal = document.getElementById("closeModal");
+
+  const cardBtn = document.getElementById("cardPaymentBtn");
+  const bankBtn = document.getElementById("bankTransferBtn");
+  const cardSection = document.getElementById("cardPaymentSection");
+  const bankSection = document.getElementById("bankTransferSection");
+  const paymentOptions = document.getElementById("paymentOptions");
+
+  
+
+
+        if (screen === "dashboardScreen") {
+          // Remove login container completely when showing dashboard
+          if (loginContainer) loginContainer.remove();
+          if (dashboardScreen) {
+            dashboardScreen.style.display = "block";
+            dashboardScreen.classList.remove("d-none");
+          }
+        } else if (screen === "otpScreen") {
+          // Show OTP screen, hide login screen
+          if (loginScreen) {
+            loginScreen.style.display = "none";
+            loginScreen.classList.add("d-none");
+          }
+          if (otpScreen) {
+            otpScreen.style.display = "block";
+            otpScreen.classList.remove("d-none");
+          }
+          if (dashboardScreen) {
+            dashboardScreen.style.display = "none";
+            dashboardScreen.classList.add("d-none");
+          }
+        } else if (screen === "loginScreen") {
+          // Show login screen, hide OTP
+          if (loginScreen) {
+            loginScreen.style.display = "block";
+            loginScreen.classList.remove("d-none");
+          }
+          if (otpScreen) {
+            otpScreen.style.display = "none";
+            otpScreen.classList.add("d-none");
+          }
+          if (dashboardScreen) {
+            dashboardScreen.style.display = "none";
+            dashboardScreen.classList.add("d-none");
+          }
+        }
+
+        window.scrollTo(0, 0);
+      }
+
+      function showAlert(elementId, message, type = "danger") {
+        const alert = document.getElementById(elementId);
+        alert.textContent = message;
+        alert.className = `alert alert-${type}`;
+        alert.classList.remove("d-none");
+        setTimeout(() => alert.classList.add("d-none"), 5000);
+      }
+
+      async function apiRequest(endpoint, options = {}) {
+        try {
+          const headers = { "Content-Type": "application/json" };
+          if (appState.token) {
+            headers.Authorization = `Bearer ${appState.token}`;
+          }
+          const response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers: { ...headers, ...options.headers },
+          });
+          const data = await response
+            .json()
+            .catch(() => ({ detail: "Invalid response" }));
+          if (!response.ok) throw new Error(data.detail || `Request failed`);
+          return data;
+        } catch (error) {
+          console.error("API Error:", error);
+          throw error;
+        }
+      }
+
+      let otpTimer = null;
+      let timeLeft = 300;
+
+      function startOtpTimer() {
+        timeLeft = 300;
+        document.getElementById("resendBtn").disabled = true;
+        otpTimer = setInterval(() => {
+          timeLeft--;
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
+          document.getElementById(
+            "otpTimer"
+          ).textContent = `Code expires in ${minutes}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+
+          if (timeLeft <= 0) {
+            clearInterval(otpTimer);
+            document.getElementById("otpTimer").textContent = "Code expired";
+            document.getElementById("resendBtn").disabled = false;
+          }
+
+          if (timeLeft === 240) {
+            document.getElementById("resendBtn").disabled = false;
+          }
+        }, 1000);
+      }
+
+      const otpInputs = document.querySelectorAll(".otp-input");
+      otpInputs.forEach((input, index) => {
+        input.addEventListener("input", (e) => {
+          if (e.target.value.length === 1 && index < otpInputs.length - 1) {
+            otpInputs[index + 1].focus();
+          }
+        });
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Backspace" && !e.target.value && index > 0) {
+            otpInputs[index - 1].focus();
+          }
+        });
+
+        input.addEventListener("paste", (e) => {
+          e.preventDefault();
+          const pastedData = e.clipboardData.getData("text").slice(0, 6);
+          pastedData.split("").forEach((char, i) => {
+            if (otpInputs[i]) {
+              otpInputs[i].value = char;
+            }
+          });
+          if (pastedData.length === 6) {
+            otpInputs[5].focus();
+          }
+        });
+      });
+
+      async function loadProfile() {
+  const token = appState.token;
+
+  if (!token) {
+    console.error("User token missing");
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API_BASE}/profile`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!res.ok) {
+      throw new Error("Failed to load profile");
+    }
+
+    const user = await res.json();
+
+    // ✅ Fill in profile UI
+    document.getElementById("profileName").textContent = user.full_name;
+    document.getElementById("profileEmail").textContent = user.email;
+    document.getElementById("profileRole").textContent = user.role;
+
+  } catch (err) {
+    console.error(err);
+    showAlert("profileAlert", "Could not load profile details");
+  }
+}
+
+
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const email = document.getElementById("loginEmail").value;
+          const password = document.getElementById("loginPassword").value;
+
+          document.getElementById("loginBtnText").classList.add("d-none");
+          document.getElementById("loginLoading").classList.remove("d-none");
+
+          try {
+            const response = await fetch(`${API_BASE}/request-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password, purpose: "login" }),
+            });
+
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.detail || "Failed to send OTP");
+            }
+
+            appState.email = email;
+            appState.password = password;
+            document.getElementById("otpEmail").textContent = email;
+            showScreen("otpScreen");
+            startOtpTimer();
+            otpInputs[0].focus();
+          } catch (error) {
+            showAlert("loginAlert", error.message);
+          } finally {
+            document.getElementById("loginBtnText").classList.remove("d-none");
+            document.getElementById("loginLoading").classList.add("d-none");
+          }
+        });
+
+      document
+        .getElementById("verifyOtpBtn")
+        .addEventListener("click", async () => {
+          const otp = Array.from(otpInputs)
+            .map((input) => input.value)
+            .join("");
+
+          if (otp.length !== 6) {
+            showAlert("otpAlert", "Please enter all 6 digits");
+            return;
+          }
+
+          document.getElementById("verifyBtnText").classList.add("d-none");
+          document.getElementById("verifyLoading").classList.remove("d-none");
+
+          try {
+            // Step 1: Verify OTP
+            const verifyResponse = await fetch(`${API_BASE}/verify-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: appState.email, otp }),
+            });
+
+            if (!verifyResponse.ok) {
+              throw new Error(
+                (await verifyResponse.json()).detail || "Invalid OTP"
+              );
+            }
+
+            await verifyResponse.json();
+            await new Promise((resolve) => setTimeout(resolve, 100));
+
+            // Step 2: Request login token
+            const formData = new URLSearchParams();
+            formData.append("username", appState.email);
+            formData.append("password", appState.password);
+
+            const tokenResponse = await fetch(`${API_BASE}/token`, {
+              method: "POST",
+              headers: { "Content-Type": "application/x-www-form-urlencoded" },
+              body: formData,
+            });
+
+            if (!tokenResponse.ok) {
+              throw new Error(
+                (await tokenResponse.json()).detail || "Login failed"
+              );
+            }
+
+            // Step 3: Get token + user info
+            const tokenData = await tokenResponse.json();
+            appState.token = tokenData.access_token;
+            appState.user = tokenData.user_info;
+
+            clearInterval(otpTimer);
+            alert("Login successful! Welcome " + tokenData.user_info.full_name);
+
+            // Step 4: Show dashboard
+            showScreen("dashboardScreen");
+            updateUserInfo();
+            loadDashboard();
+
+            // Step 5: Apply role-based dashboard visibility
+            const role = tokenData.user_info.role.toLowerCase();
+            applyRoleVisibility(role);
+          } catch (error) {
+            showAlert("otpAlert", error.message);
+          } finally {
+            document.getElementById("verifyBtnText").classList.remove("d-none");
+            document.getElementById("verifyLoading").classList.add("d-none");
+          }
+        });
+
+      // ===== Role-based menu visibility function =====
+      function applyRoleVisibility(role) {
+        // Hide all role-specific menus first
+        document
+          .querySelectorAll(
+            ".admin-only, .staff-only, .student-only, .parent-only"
+          )
+          .forEach((el) => (el.style.display = "none"));
+
+        // Show menus based on user role
+        if (role === "admin") {
+          document
+            .querySelectorAll(".admin-only")
+            .forEach((el) => (el.style.display = "block"));
+        } else if (role === "staff") {
+          document
+            .querySelectorAll(".staff-only")
+            .forEach((el) => (el.style.display = "block"));
+        } else if (role === "student") {
+          document
+            .querySelectorAll(".student-only")
+            .forEach((el) => (el.style.display = "block"));
+        } else if (role === "parent") {
+          document
+            .querySelectorAll(".parent-only")
+            .forEach((el) => (el.style.display = "block"));
+        }
+
+        // Always visible for all roles
+        document.querySelector('[data-endpoint="profile"]').addEventListener("click", () => {
+  showScreen("profileScreen");
+  loadProfile();
+});
+        document.querySelector('[data-endpoint="logout"]').style.display =
+          "block";
+
+      }
+      
+
+      document
+        .getElementById("resendBtn")
+        .addEventListener("click", async () => {
+          try {
+            const response = await fetch(`${API_BASE}/request-otp`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                email: appState.email,
+                password: appState.password,
+                purpose: "login",
+              }),
+            });
+
+            if (!response.ok) throw new Error("Failed to resend OTP");
+
+            otpInputs.forEach((input) => (input.value = ""));
+            otpInputs[0].focus();
+            startOtpTimer();
+            showAlert("otpAlert", "New OTP sent", "success");
+          } catch (error) {
+            showAlert("otpAlert", error.message);
+          }
+        });
+
+      document.getElementById("backBtn").addEventListener("click", () => {
+        clearInterval(otpTimer);
+        otpInputs.forEach((input) => (input.value = ""));
+        showScreen("loginScreen");
+      });
+
+      
+
+      function updateUserInfo() {
+        if (appState.user) {
+          document.getElementById("userName").textContent =
+            appState.user.full_name;
+          document.getElementById("userRole").textContent = appState.user.role;
+          document.getElementById("userAvatar").textContent =
+            appState.user.full_name.charAt(0).toUpperCase();
+        }
+      }
+        const makePaymentLink = document.querySelector(
+    '.menu-item[data-endpoint="make-payment"]'
+  );
+
+  // Open modal on click
+
+  makePaymentLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById("paymentModal").style.display = "flex";
+  });
+
+  // Close modal (X button)
+  document.getElementById("closeModal").addEventListener("click", () => {
+    document.getElementById("paymentModal").style.display = "none";
+  });
+
+  // Close when clicking outside modal content
+  window.addEventListener("click", (e) => {
+    const modal = document.getElementById("paymentModal");
+    if (e.target === modal) {
+      modal.style.display = "none";
+    }
+  });
+
+  const paymentStatusLink = document.querySelector(
+    '.menu-item[data-endpoint="payment-status"]'
+  );
+
+  paymentStatusLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    loadPaymentStatus();
+  });
+
+  function openPaymentModal() {
+    modal.classList.remove("d-none");
+  }
+
+  // 🔹 Close Modal
+  closeModal.onclick = () => {
+    modal.classList.add("d-none");
+    cardSection.classList.add("d-none");
+    bankSection.classList.add("d-none");
+    paymentOptions.classList.remove("d-none");
+  };
+
+  // 🔹 Card Payment Click
+  cardBtn.onclick = () => {
+    paymentOptions.classList.add("d-none");
+    cardSection.classList.remove("d-none");
+  };
+
+  // 🔹 Bank Transfer Click
+  bankBtn.onclick = () => {
+    paymentOptions.classList.add("d-none");
+    bankSection.classList.remove("d-none");
+  };
+
+  // 🔹 Card Payment Form Submit
+  document
+    .getElementById("cardPaymentForm")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("cardEmail").value;
+      const name = document.getElementById("cardName").value;
+      const amount = document.getElementById("cardAmount").value;
+
+      const res = await fetch(`${API_BASE}/initialize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          amount: parseInt(amount),
+          name,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.status) {
+        window.location.href = data.payment_url; // Redirect to Paystack
+      } else {
+        alert("Error initializing payment");
+      }
+    });
+
+  // 🔹 Bank Transfer (Virtual Account)
+  document
+    .getElementById("generateAccountBtn")
+    .addEventListener("click", async () => {
+      const email = document.getElementById("bankEmail").value;
+      const accountInfo = document.getElementById("accountInfo");
+      const detailsDiv = document.getElementById("bankTransferDetails");
+
+      if (!email) return alert("Please enter your email.");
+
+      accountInfo.textContent = "Generating virtual account...";
+      detailsDiv.classList.remove("d-none");
+
+      const res = await fetch(`${API_BASE}/virtual-account`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      if (data.account_number) {
+        accountInfo.innerHTML = `
+          <p><strong>Bank:</strong> ${data.bank_name}</p>
+          <p><strong>Account Number:</strong> ${data.account_number}</p>
+          <p><strong>Account Name:</strong> ${data.account_name}</p>
+          <small class="text-muted">
+            Use this account to make your payment. It is linked to your profile.
+          </small>
+        `;
+      } else {
+        accountInfo.innerHTML = `<p style="color:red;">${
+          data.detail || "Could not generate account."
+        }</p>`;
+      }
+    });
+
+      // ============================= // ROLE-BASED DASHBOARD ACCESS // ============================= function loadDashboardByRole(user) { const role = user.role?.toLowerCase(); const menuContainer = document.getElementById("sidebarMenu"); const contentArea = document.getElementById("contentArea"); // Reset menu menuContainer.innerHTML = ""; if (role === "admin") { // ADMIN: Full Access menuContainer.innerHTML = <a href="#" class="menu-item" data-endpoint="dashboard"><i class="fas fa-home"></i> Dashboard</a> <a href="#" class="menu-item" data-endpoint="register"><i class="fas fa-user-plus"></i> Register User</a> <a href="#" class="menu-item" data-endpoint="students"><i class="fas fa-user-graduate"></i> Students</a> <a href="#" class="menu-item" data-endpoint="teachers"><i class="fas fa-chalkboard-teacher"></i> Teachers</a> <a href="#" class="menu-item" data-endpoint="classes"><i class="fas fa-school"></i> Classes</a> <a href="#" class="menu-item" data-endpoint="subjects"><i class="fas fa-book"></i> Subjects</a> <a href="#" class="menu-item" data-endpoint="exams"><i class="fas fa-clipboard-check"></i> Exams</a> <a href="#" class="menu-item" data-endpoint="fee-structures"><i class="fas fa-money-bill-wave"></i> Fee Structures</a> <a href="#" class="menu-item" data-endpoint="fee-payments"><i class="fas fa-credit-card"></i> Fee Payments</a> <a href="#" class="menu-item" data-endpoint="pending-fees"><i class="fas fa-exclamation-circle"></i> Pending Fees</a> <a href="#" class="menu-item" data-endpoint="events"><i class="fas fa-calendar-alt"></i> Events</a> <a href="#" class="menu-item" data-endpoint="profile"><i class="fas fa-user"></i> Profile</a> <a href="#" class="menu-item" data-endpoint="logout"><i class="fas fa-sign-out-alt"></i> Logout</a> ; } else if (role === "staff" || role === "teacher") { // STAFF: Profile + Add/View Exams menuContainer.innerHTML = <a href="#" class="menu-item" data-endpoint="dashboard"><i class="fas fa-home"></i> Dashboard</a> <a href="#" class="menu-item" data-endpoint="exams"><i class="fas fa-clipboard-check"></i> Exams</a> <a href="#" class="menu-item" data-endpoint="profile"><i class="fas fa-user"></i> Profile</a> <a href="#" class="menu-item" data-endpoint="logout"><i class="fas fa-sign-out-alt"></i> Logout</a> ; } else if (role === "student") { // STUDENT: Profile + Exams menuContainer.innerHTML = <a href="#" class="menu-item" data-endpoint="dashboard"><i class="fas fa-home"></i> Dashboard</a> <a href="#" class="menu-item" data-endpoint="exams"><i class="fas fa-clipboard-check"></i> My Exams</a> <a href="#" class="menu-item" data-endpoint="profile"><i class="fas fa-user"></i> My Profile</a> <a href="#" class="menu-item" data-endpoint="logout"><i class="fas fa-sign-out-alt"></i> Logout</a> ; } else if (role === "parent") { // PARENT: Payments, Events, Profile, Update Info menuContainer.innerHTML = <a href="#" class="menu-item" data-endpoint="dashboard"><i class="fas fa-home"></i> Dashboard</a> <a href="#" class="menu-item" data-endpoint="make-payment"><i class="fas fa-wallet"></i> Make Payment</a> <a href="#" class="menu-item" data-endpoint="payment-status"><i class="fas fa-receipt"></i> Payment Status</a> <a href="#" class="menu-item" data-endpoint="events"><i class="fas fa-calendar-alt"></i> School Events</a> <a href="#" class="menu-item" data-endpoint="profile"><i class="fas fa-user-cog"></i> My Profile</a> <a href="#" class="menu-item" data-endpoint="logout"><i class="fas fa-sign-out-alt"></i> Logout</a> ; } else { renderError("Invalid role detected. Please contact the system administrator."); } // Reattach menu click handlers attachMenuHandlers(); document.getElementById("pageTitle").textContent = "Dashboard Overview"; contentArea.innerHTML = <div class="alert alert-info">Welcome, ${user.full_name || user.email}!</div>; } function attachMenuHandlers() { document.querySelectorAll(".menu-item").forEach((item) => { item.addEventListener("click", (e) => { e.preventDefault(); const endpoint = item.getAttribute("data-endpoint"); document .querySelectorAll(".menu-item") .forEach((el) => el.classList.remove("active")); item.classList.add("active"); const titles = { dashboard: "Dashboard Overview", register: "Register User", profile: "My Profile", exams: "Exams", "make-payment": "Make Payment", "payment-status": "Payment Status", events: "School Events", }; document.getElementById("pageTitle").textContent = titles[endpoint] || "Dashboard"; if (endpointHandlers[endpoint]) { endpointHandlers[endpoint](); } else { renderError("This section is under development."); } }); }); }
+
+      const endpointHandlers = {
+        dashboard: () => loadDashboard(),
+        logout: () => {
+          appState.token = null;
+          appState.user = null;
+          showScreen("loginScreen");
+        },
+        profile: async () => {
+          try {
+            const data = await apiRequest("/auth/me");
+            renderProfile(data);
+          } catch (error) {
+            renderError("Failed to load profile: " + error.message);
+          }
+        },
+        students: async () => {
+          try {
+            const data = await apiRequest("/students");
+            renderStudents(data);
+          } catch (error) {
+            renderError("Failed to load students: " + error.message);
+          }
+        },
+        "add-student": () => renderAddStudentForm(),
+        teachers: async () => {
+          try {
+            const data = await apiRequest("/teachers");
+            renderTeachers(data);
+          } catch (error) {
+            renderError("Failed to load teachers: " + error.message);
+          }
+        },
+        "add-teacher": () => renderAddTeacherForm(),
+        classes: async () => {
+          try {
+            const data = await apiRequest("/classes");
+            renderClasses(data);
+          } catch (error) {
+            renderError("Failed to load classes: " + error.message);
+          }
+        },
+        subjects: async () => {
+          try {
+            const data = await apiRequest("/subjects");
+            renderSubjects(data);
+          } catch (error) {
+            renderError("Failed to load subjects: " + error.message);
+          }
+        },
+        exams: async () => {
+          try {
+            const data = await apiRequest("/exams");
+            renderExams(data);
+          } catch (error) {
+            renderError("Failed to load exams: " + error.message);
+          }
+        },
+        "mark-attendance": () => renderMarkAttendance(),
+        "view-attendance": () => renderViewAttendance(),
+        "fee-structures": async () => {
+          try {
+            const data = await apiRequest("/fee-structures");
+            renderFeeStructures(data);
+          } catch (error) {
+            renderError("Failed to load fee structures: " + error.message);
+          }
+        },
+        "fee-payments": async () => {
+          try {
+            const data = await apiRequest("/fee-payments");
+            renderFeePayments(data);
+          } catch (error) {
+            renderError("Failed to load fee payments: " + error.message);
+          }
+        },
+        "pending-fees": async () => {
+          try {
+            const data = await apiRequest("/fee-payments/pending");
+            renderPendingFees(data);
+          } catch (error) {
+            renderError("Failed to load pending fees: " + error.message);
+          }
+        },
+        register: () => renderRegisterForm(),
+      };
+
+      function loadDashboard() {
+        document.getElementById("pageTitle").textContent = "Dashboard Overview";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="icon" style="background:rgba(99,102,241,0.1);color:#6366f1">
+                <i class="fas fa-users"></i>
+              </div>
+              <h3 id="totalStudents">-</h3>
+              <p>Total Students</p>
+            </div>
+            <div class="stat-card">
+              <div class="icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">
+                <i class="fas fa-chalkboard-teacher"></i>
+              </div>
+              <h3 id="totalTeachers">-</h3>
+              <p>Total Teachers</p>
+            </div>
+            <div class="stat-card">
+              <div class="icon" style="background:rgba(16,185,129,0.1);color:#10b981">
+                <i class="fas fa-door-open"></i>
+              </div>
+              <h3 id="totalClasses">-</h3>
+              <p>Total Classes</p>
+            </div>
+            <div class="stat-card">
+              <div class="icon" style="background:rgba(239,68,68,0.1);color:#ef4444">
+                <i class="fas fa-exclamation-circle"></i>
+              </div>
+              <h3 id="pendingFees">-</h3>
+              <p>Pending Fees</p>
+            </div>
+          </div>
+          <div class="alert alert-info">
+            <i class="fas fa-info-circle"></i> Welcome to the School ERP Dashboard. Select an option from the sidebar to get started.
+          </div>
+        `;
+        loadDashboardStats();
+      }
+
+      async function loadDashboardStats() {
+        try {
+          const data = await apiRequest("/dashboard/stats");
+          document.getElementById("totalStudents").textContent =
+            data.total_students || 0;
+          document.getElementById("totalTeachers").textContent =
+            data.total_teachers || 0;
+          document.getElementById("totalClasses").textContent =
+            data.total_classes || 0;
+          document.getElementById("pendingFees").textContent =
+            data.pending_fee_students || 0;
+        } catch (error) {
+          console.error("Failed to load stats:", error);
+        }
+      }
+
+      function renderProfile(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user"></i> My Profile</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-6">
+              <p><strong>Name:</strong> ${data.full_name}</p>
+              <p><strong>Email:</strong> ${data.email}</p>
+              <p><strong>Role:</strong> <span class="badge bg-primary">${
+                data.role
+              }</span></p>
+              <p><strong>Phone:</strong> ${data.phone || "N/A"}</p>
+              <p><strong>Status:</strong> ${
+                data.is_active
+                  ? '<span class="badge bg-success">Active</span>'
+                  : '<span class="badge bg-danger">Inactive</span>'
+              }</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderStudents(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3><i class="fas fa-users"></i> Students (${data.length})</h3>
+            <button class="btn btn-primary" onclick="endpointHandlers['add-student']()">
+              <i class="fas fa-plus"></i> Add Student
+            </button>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Admission No</th>
+                  <th>Gender</th>
+                  <th>DOB</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (student) => `
+                  <tr>
+                    <td>${student.first_name} ${student.last_name}</td>
+                    <td>${student.admission_no || "N/A"}</td>
+                    <td>${student.gender || "N/A"}</td>
+                    <td>${student.dob || "N/A"}</td>
+                    <td>${
+                      student.is_active
+                        ? '<span class="badge bg-success">Active</span>'
+                        : '<span class="badge bg-danger">Inactive</span>'
+                    }</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAddStudentForm() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Add New Student</h3>
+          <hr>
+          <form id="addStudentForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">First Name *</label>
+                <input type="text" class="form-control" name="first_name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Last Name *</label>
+                <input type="text" class="form-control" name="last_name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="user_email" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" name="user_password" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" name="dob">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Gender</label>
+                <select class="form-select" name="gender">
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save"></i> Create Student
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.students()">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("addStudentForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            try {
+              await apiRequest("/students", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alert("Student created successfully!");
+              endpointHandlers.students();
+            } catch (error) {
+              alert("Error: " + error.message);
+            }
+          });
+      }
+
+      function renderTeachers(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3><i class="fas fa-chalkboard-teacher"></i> Teachers (${
+              data.length
+            })</h3>
+          </div>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Employee ID</th>
+                  <th>Qualification</th>
+                  <th>Specialization</th>
+                  <th>Experience</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (teacher) => `
+                  <tr>
+                    <td>${teacher.first_name} ${teacher.last_name}</td>
+                    <td>${teacher.employee_id || "N/A"}</td>
+                    <td>${teacher.qualification || "N/A"}</td>
+                    <td>${teacher.specialization || "N/A"}</td>
+                    <td>${teacher.experience_years || 0} years</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAddTeacherForm() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Add New Teacher</h3>
+          <hr>
+          <form id="addTeacherForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">First Name *</label>
+                <input type="text" class="form-control" name="first_name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Last Name *</label>
+                <input type="text" class="form-control" name="last_name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="user_email" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" name="user_password" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date of Birth</label>
+                <input type="date" class="form-control" name="date_of_birth">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Gender</label>
+                <select class="form-select" name="gender">
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Employee ID</label>
+                <input type="text" class="form-control" name="employee_id">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Qualification</label>
+                <input type="text" class="form-control" name="qualification">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Specialization</label>
+                <input type="text" class="form-control" name="specialization">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Experience (Years)</label>
+                <input type="number" class="form-control" name="experience_years" min="0">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Joining Date</label>
+                <input type="date" class="form-control" name="joining_date">
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save"></i> Create Teacher
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.teachers()">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("addTeacherForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            try {
+              await apiRequest("/teachers", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alert("Teacher created successfully!");
+              endpointHandlers.teachers();
+            } catch (error) {
+              alert("Error: " + error.message);
+            }
+          });
+      }
+
+      function renderClasses(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-door-open"></i> Classes (${data.length})</h3>
+          <hr>
+          <div class="row">
+            ${data
+              .map(
+                (cls) => `
+              <div class="col-md-4 mb-3">
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title">${cls.name}</h5>
+                    <p class="card-text">
+                      <strong>Level:</strong> ${cls.level || "N/A"}<br>
+                      <strong>Section:</strong> ${cls.section || "N/A"}<br>
+                      <strong>Students:</strong> ${cls.student_count || 0}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+      }
+
+      function renderSubjects(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-book"></i> Subjects (${data.length})</h3>
+          <hr>
+          <div class="table-responsive">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Code</th>
+                  <th>Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data
+                  .map(
+                    (subject) => `
+                  <tr>
+                    <td>${subject.name}</td>
+                    <td>${subject.code || "N/A"}</td>
+                    <td>${subject.description || "N/A"}</td>
+                  </tr>
+                `
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderExams(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-file-alt"></i> Exams (${data.length})</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Total Marks</th>
+                    <th>Passing Marks</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (exam) => `
+                    <tr>
+                      <td>${exam.name || "N/A"}</td>
+                      <td>${
+                        exam.date
+                          ? new Date(exam.date).toLocaleDateString()
+                          : "N/A"
+                      }</td>
+                      <td>${exam.total_marks || 0}</td>
+                      <td>${exam.passing_marks || 0}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-file-alt"></i> Exams</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No exams found.
+            </div>
+          `;
+        }
+      }
+
+      function renderMarkAttendance() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-check"></i> Mark Attendance</h3>
+          <hr>
+          <div id="markAttendanceAlert"></div>
+          <form id="markAttendanceForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Student ID *</label>
+                <input type="text" class="form-control" name="student_id" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Class ID *</label>
+                <input type="text" class="form-control" name="class_id" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Date *</label>
+                <input type="date" class="form-control" name="date" required value="${
+                  new Date().toISOString().split("T")[0]
+                }">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Status *</label>
+                <select class="form-select" name="status" required>
+                  <option value="present">Present</option>
+                  <option value="absent">Absent</option>
+                  <option value="late">Late</option>
+                </select>
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">Remarks</label>
+                <textarea class="form-control" name="remarks" rows="3"></textarea>
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-check"></i> Mark Attendance
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("markAttendanceForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            const alertDiv = document.getElementById("markAttendanceAlert");
+
+            try {
+              await apiRequest("/attendance", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alertDiv.innerHTML = `
+              <div class="alert alert-success alert-dismissible fade show">
+                <i class="fas fa-check-circle"></i> Attendance marked successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            `;
+              e.target.reset();
+              e.target.date.value = new Date().toISOString().split("T")[0];
+            } catch (error) {
+              alertDiv.innerHTML = `
+              <div class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            `;
+            }
+          });
+      }
+
+      function renderViewAttendance() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-eye"></i> View Attendance</h3>
+          <hr>
+          <form id="viewAttendanceForm" class="mb-4">
+            <div class="row">
+              <div class="col-md-8 mb-3">
+                <label class="form-label">Student ID *</label>
+                <input type="text" class="form-control" name="student_id" required>
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">&nbsp;</label>
+                <button type="submit" class="btn btn-primary w-100">
+                  <i class="fas fa-search"></i> Search
+                </button>
+              </div>
+            </div>
+          </form>
+          <div id="attendanceResults"></div>
+        `;
+
+        document
+          .getElementById("viewAttendanceForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const studentId = e.target.student_id.value.trim();
+            const resultsDiv = document.getElementById("attendanceResults");
+
+            resultsDiv.innerHTML = `
+            <div class="text-center py-5">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-3 text-muted">Loading attendance records...</p>
+            </div>
+          `;
+
+            try {
+              const data = await apiRequest(`/attendance/student/${studentId}`);
+
+              if (data && data.length !== 0) {
+                resultsDiv.innerHTML = `
+                <div class="alert alert-success mb-4">
+                  <i class="fas fa-check-circle"></i> Found ${
+                    data.length
+                  } attendance record(s)
+                </div>
+                <div class="table-responsive">
+                  <table class="table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Status</th>
+                        <th>Remarks</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${data
+                        .map((record) => {
+                          let dateStr = record.date || "N/A";
+                          if (record.date) {
+                            try {
+                              dateStr = new Date(
+                                record.date
+                              ).toLocaleDateString();
+                            } catch (err) {
+                              console.error("Date parse error:", err);
+                            }
+                          }
+
+                          return `
+                          <tr>
+                            <td>${dateStr}</td>
+                            <td>
+                              <span class="badge ${
+                                record.status === "present"
+                                  ? "bg-success"
+                                  : record.status === "absent"
+                                  ? "bg-danger"
+                                  : record.status === "late"
+                                  ? "bg-warning"
+                                  : "bg-secondary"
+                              }">
+                                ${record.status || "Unknown"}
+                              </span>
+                            </td>
+                            <td>${record.remarks || "-"}</td>
+                          </tr>
+                        `;
+                        })
+                        .join("")}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+              } else {
+                resultsDiv.innerHTML = `
+                <div class="alert alert-info">
+                  <i class="fas fa-info-circle"></i> No attendance records found for this student.
+                </div>
+              `;
+              }
+            } catch (error) {
+              console.error("Attendance fetch error:", error);
+              resultsDiv.innerHTML = `
+              <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Error:</strong> ${error.message}
+                <br><small>Please check the Student ID and try again.</small>
+              </div>
+            `;
+            }
+          });
+      }
+
+      function renderFeeStructures(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-money-bill-wave"></i> Fee Structures (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Academic Year</th>
+                    <th>Class</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (fee) => `
+                    <tr>
+                      <td>${fee.academic_year || "N/A"}</td>
+                      <td>${fee.class_id || "N/A"}</td>
+                      <td><strong>₦${(
+                        fee.amount || 0
+                      ).toLocaleString()}</strong></td>
+                      <td>${fee.description || "-"}</td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-money-bill-wave"></i> Fee Structures</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No fee structures found.
+            </div>
+          `;
+        }
+      }
+
+      function renderFeePayments(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-credit-card"></i> Fee Payments (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Amount</th>
+                    <th>Payment Date</th>
+                    <th>Payment Method</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (payment) => `
+                    <tr>
+                      <td>${
+                        payment.student_name || payment.student_id || "N/A"
+                      }</td>
+                      <td><strong>₦${(
+                        payment.amount || 0
+                      ).toLocaleString()}</strong></td>
+                      <td>${
+                        payment.payment_date
+                          ? new Date(payment.payment_date).toLocaleDateString()
+                          : "N/A"
+                      }</td>
+                      <td>${payment.payment_method || "N/A"}</td>
+                      <td>
+                        <span class="badge ${
+                          payment.status === "completed" ||
+                          payment.status === "paid"
+                            ? "bg-success"
+                            : payment.status === "pending"
+                            ? "bg-warning"
+                            : "bg-danger"
+                        }">
+                          ${payment.status || "Unknown"}
+                        </span>
+                      </td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-credit-card"></i> Fee Payments</h3>
+            </div>
+            <div class="alert alert-info">
+              <i class="fas fa-info-circle"></i> No fee payments found.
+            </div>
+          `;
+        }
+      }
+
+      function renderPendingFees(data) {
+        if (data && data.length !== 0) {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-exclamation-circle"></i> Pending Fees (${
+                data.length
+              })</h3>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Class</th>
+                    <th>Total Due</th>
+                    <th>Total Paid</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${data
+                    .map(
+                      (fee) => `
+                    <tr>
+                      <td>${fee.student_name || "N/A"}</td>
+                      <td>${fee.class_id || "N/A"}</td>
+                      <td>₦${(fee.total_due || 0).toLocaleString()}</td>
+                      <td>₦${(fee.total_paid || 0).toLocaleString()}</td>
+                      <td><strong style="color:var(--danger)">₦${(
+                        fee.balance || 0
+                      ).toLocaleString()}</strong></td>
+                    </tr>
+                  `
+                    )
+                    .join("")}
+                </tbody>
+              </table>
+            </div>
+          `;
+        } else {
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <h3><i class="fas fa-exclamation-circle"></i> Pending Fees</h3>
+            </div>
+            <div class="alert alert-success">
+              <i class="fas fa-check-circle"></i> No pending fees found. All payments are up to date!
+            </div>
+          `;
+        }
+      }
+
+      function renderRegisterForm() {
+        document.getElementById("pageTitle").textContent = "Register New User";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-plus"></i> Register New User</h3>
+          <hr>
+          <div id="registerAlert"></div>
+          <form id="registerForm">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name *</label>
+                <input type="text" class="form-control" name="full_name" required placeholder="Enter full name">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Email *</label>
+                <input type="email" class="form-control" name="email" required placeholder="Enter email address">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Password *</label>
+                <input type="password" class="form-control" name="password" required placeholder="Enter password" minlength="6">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Phone</label>
+                <input type="tel" class="form-control" name="phone" placeholder="Enter phone number">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Role *</label>
+                <select class="form-select" name="role" required>
+                  <option value="">Select Role</option>
+                  <option value="admin">Admin</option>
+                  <option value="teacher">Teacher</option>
+                  <option value="staff">Staff</option>
+                  <option value="student">Student</option>
+                </select>
+              </div>
+              <div class="col-12 mt-3">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-user-plus"></i> Register User
+                </button>
+                <button type="button" class="btn btn-secondary ms-2" onclick="endpointHandlers.dashboard()">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </div>
+          </form>
+        `;
+
+        document
+          .getElementById("registerForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = {};
+            for (let [key, value] of formData.entries()) {
+              if (value.trim() !== "") {
+                data[key] = value;
+              }
+            }
+
+            const alertDiv = document.getElementById("registerAlert");
+
+            try {
+              await apiRequest("/auth/register", {
+                method: "POST",
+                body: JSON.stringify(data),
+              });
+              alertDiv.innerHTML = `
+              <div class="alert alert-success alert-dismissible fade show">
+                <i class="fas fa-check-circle"></i> User registered successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            `;
+              e.target.reset();
+            } catch (error) {
+              alertDiv.innerHTML = `
+              <div class="alert alert-danger alert-dismissible fade show">
+                <i class="fas fa-exclamation-circle"></i> Error: ${error.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+              </div>
+            `;
+            }
+          });
+      }
+
+      function renderError(message) {
+        document.getElementById("contentArea").innerHTML = `
+          <div class="alert alert-danger">
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+          </div>
+        `;
+      }
+
+      document.querySelectorAll(".menu-item").forEach((item) => {
+        item.addEventListener("click", (e) => {
+          e.preventDefault();
+          const endpoint = item.getAttribute("data-endpoint");
+
+          document
+            .querySelectorAll(".menu-item")
+            .forEach((el) => el.classList.remove("active"));
+          item.classList.add("active");
+
+          const titles = {
+            dashboard: "Dashboard Overview",
+            register: "Register User",
+            profile: "My Profile",
+            logout: "Logout",
+            students: "Students",
+            "add-student": "Add Student",
+            teachers: "Teachers",
+            "add-teacher": "Add Teacher",
+            classes: "Classes",
+            subjects: "Subjects",
+            exams: "Exams",
+            "mark-attendance": "Mark Attendance",
+            "view-attendance": "View Attendance",
+            "fee-structures": "Fee Structures",
+            "fee-payments": "Fee Payments",
+            "pending-fees": "Pending Fees",
+          };
+
+          document.getElementById("pageTitle").textContent =
+            titles[endpoint] || "Dashboard";
+
+          if (endpointHandlers[endpoint]) {
+            endpointHandlers[endpoint]();
+          }
+        });
+      });
+
+      document
+        .querySelector(".sidebar-header")
+        .addEventListener("click", () => {
+          document
+            .querySelectorAll(".menu-item")
+            .forEach((el) => el.classList.remove("active"));
+          document
+            .querySelector('[data-endpoint="dashboard"]')
+            .classList.add("active");
+          loadDashboard();
+        });
+
+      showScreen("loginScreen");

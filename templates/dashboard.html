@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Educare - Exam Platform</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .header {
+        background: white;
+        padding: 20px 30px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .timer {
+        font-size: 20px;
+        font-weight: bold;
+        color: #667eea;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .timer-icon {
+        font-size: 24px;
+      }
+
+      .welcome-screen,
+      .exam-selection,
+      .exam-screen,
+      .results-screen {
+        background: white;
+        padding: 40px;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+      }
+
+      .welcome-screen h1 {
+        font-size: 36px;
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .welcome-screen p {
+        font-size: 18px;
+        color: #666;
+        margin-bottom: 30px;
+        line-height: 1.6;
+      }
+
+      .exam-types {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-top: 30px;
+      }
+
+      .exam-card {
+        border: 2px solid #e0e0e0;
+        padding: 30px;
+        border-radius: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        text-align: center;
+      }
+
+      .exam-card:hover {
+        border-color: #667eea;
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+
+      .exam-card.selected {
+        border-color: #667eea;
+        background: linear-gradient(
+          135deg,
+          rgba(102, 126, 234, 0.1) 0%,
+          rgba(118, 75, 162, 0.1) 100%
+        );
+      }
+
+      .exam-card h3 {
+        font-size: 24px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+
+      .exam-card p {
+        color: #666;
+        margin-bottom: 15px;
+      }
+
+      .subject-selection {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 15px;
+        margin: 30px 0;
+      }
+
+      .subject-btn {
+        padding: 15px;
+        border: 2px solid #e0e0e0;
+        background: white;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 16px;
+      }
+
+      .subject-btn:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.1);
+      }
+
+      .subject-btn.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn {
+        padding: 15px 40px;
+        border: none;
+        border-radius: 8px;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 20px;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-secondary {
+        background: #e0e0e0;
+        color: #333;
+        margin-left: 10px;
+      }
+
+      .question-progress {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid #e0e0e0;
+      }
+
+      .progress-text {
+        font-size: 18px;
+        color: #666;
+      }
+
+      .question-number {
+        font-weight: bold;
+        color: #667eea;
+      }
+
+      .question-card {
+        margin-bottom: 30px;
+      }
+
+      .question-text {
+        font-size: 20px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 25px;
+        line-height: 1.6;
+      }
+
+      .options {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+      }
+
+      .option {
+        padding: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .option:hover {
+        border-color: #667eea;
+        background: rgba(102, 126, 234, 0.05);
+      }
+
+      .option.selected {
+        border-color: #667eea;
+        background: linear-gradient(
+          135deg,
+          rgba(102, 126, 234, 0.1) 0%,
+          rgba(118, 75, 162, 0.1) 100%
+        );
+      }
+
+      .option-letter {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #f0f0f0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        color: #666;
+      }
+
+      .option.selected .option-letter {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .navigation-buttons {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 30px;
+      }
+
+      .results-screen h1 {
+        font-size: 36px;
+        margin-bottom: 20px;
+        text-align: center;
+        color: #333;
+      }
+
+      .score-display {
+        text-align: center;
+        padding: 40px;
+        background: linear-gradient(
+          135deg,
+          rgba(102, 126, 234, 0.1) 0%,
+          rgba(118, 75, 162, 0.1) 100%
+        );
+        border-radius: 12px;
+        margin-bottom: 30px;
+      }
+
+      .score-circle {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 48px;
+        font-weight: bold;
+      }
+
+      .score-text {
+        font-size: 24px;
+        color: #666;
+        margin-top: 15px;
+      }
+
+      .answer-review {
+        margin-top: 30px;
+      }
+
+      .review-item {
+        padding: 20px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .review-item.correct {
+        border-color: #4caf50;
+        background: rgba(76, 175, 80, 0.1);
+      }
+
+      .review-item.incorrect {
+        border-color: #f44336;
+        background: rgba(244, 67, 54, 0.1);
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .exam-info {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .exam-info p {
+        margin-bottom: 10px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">EDUCARE EXAMS</div>
+        <div class="timer hidden">
+          <span class="timer-icon">⏱️</span>
+          <span id="timerDisplay">60:00</span>
+        </div>
+      </div>
+
+      <!-- Welcome Screen -->
+      <div id="welcomeScreen" class="welcome-screen">
+        <h1>📚 Welcome to Fairview Exam Platform</h1>
+        <p>
+          Practice with real past questions from WAEC and JAMB examinations.
+          Test your knowledge, track your progress, and prepare for success!
+        </p>
+
+        <div class="exam-info">
+          <p><strong>🎯 Features:</strong></p>
+          <p>• Access to authentic WAEC and JAMB past questions</p>
+          <p>• Timed exam simulation for realistic practice</p>
+          <p>• Instant scoring and detailed performance analysis</p>
+          <p>• Subject-specific practice across all major topics</p>
+        </div>
+
+        <button class="btn btn-primary" onclick="showExamSelection()">
+          Start Practice Exam
+        </button>
+      </div>
+
+      <!-- Exam Selection Screen -->
+      <div id="examSelection" class="exam-selection hidden">
+        <h2>Select Exam Type</h2>
+        <div class="exam-types">
+          <div class="exam-card" onclick="selectExamType('waec')">
+            <h3>📝 WAEC</h3>
+            <p>West African Examinations Council</p>
+            <p style="font-size: 14px; color: #999">
+              Senior Secondary Certificate Examination
+            </p>
+          </div>
+          <div class="exam-card" onclick="selectExamType('jamb')">
+            <h3>🎓 JAMB</h3>
+            <p>Joint Admissions and Matriculation Board</p>
+            <p style="font-size: 14px; color: #999">
+              Unified Tertiary Matriculation Examination
+            </p>
+          </div>
+        </div>
+
+        <div id="subjectSelection" class="hidden" style="margin-top: 30px">
+          <h3>Select Subject</h3>
+          <div class="subject-selection" id="subjectButtons"></div>
+          <button class="btn btn-primary" onclick="startExam()">
+            Begin Exam
+          </button>
+          <button class="btn btn-secondary" onclick="showWelcome()">
+            Back
+          </button>
+        </div>
+      </div>
+
+      <!-- Exam Screen -->
+      <div id="examScreen" class="exam-screen hidden">
+        <div class="question-progress">
+          <div class="progress-text">
+            Question
+            <span class="question-number" id="currentQuestion">1</span> of
+            <span id="totalQuestions">20</span>
+          </div>
+          <div class="progress-text">
+            Subject: <span class="question-number" id="examSubject"></span>
+          </div>
+        </div>
+
+        <div class="question-card">
+          <div class="question-text" id="questionText"></div>
+          <div class="options" id="optionsContainer"></div>
+        </div>
+
+        <div class="navigation-buttons">
+          <button
+            class="btn btn-secondary"
+            onclick="previousQuestion()"
+            id="prevBtn"
+          >
+            ← Previous
+          </button>
+          <button class="btn btn-primary" onclick="nextQuestion()" id="nextBtn">
+            Next →
+          </button>
+          <button
+            class="btn btn-primary hidden"
+            onclick="submitExam()"
+            id="submitBtn"
+          >
+            Submit Exam
+          </button>
+        </div>
+      </div>
+
+      <!-- Results Screen -->
+      <div id="resultsScreen" class="results-screen hidden">
+        <h1>🎉 Exam Complete!</h1>
+        <div class="score-display">
+          <div class="score-circle" id="scoreCircle">0%</div>
+          <div class="score-text">
+            You scored <strong id="scoreText">0 out of 20</strong>
+          </div>
+          <div
+            class="score-text"
+            style="font-size: 18px; margin-top: 10px"
+            id="performanceText"
+          ></div>
+        </div>
+
+        <div class="answer-review" id="answerReview"></div>
+
+        <div style="text-align: center; margin-top: 30px">
+          <button class="btn btn-primary" onclick="location.reload()">
+            Take Another Exam
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Sample exam data
+      const examData = {
+        waec: {
+          mathematics: [
+            {
+              question: "If 2x + 3 = 11, what is the value of x?",
+              options: ["2", "3", "4", "5"],
+              answer: 2,
+            },
+            {
+              question: "What is the square root of 144?",
+              options: ["10", "11", "12", "13"],
+              answer: 2,
+            },
+            {
+              question: "Simplify: 3(x + 2) - 2(x - 1)",
+              options: ["x + 8", "x + 4", "x + 6", "5x + 8"],
+              answer: 0,
+            },
+            {
+              question: "If y = 2x + 3, what is y when x = 5?",
+              options: ["10", "11", "12", "13"],
+              answer: 3,
+            },
+            {
+              question: "What is 25% of 80?",
+              options: ["15", "20", "25", "30"],
+              answer: 1,
+            },
+            {
+              question: "Solve: 5x - 3 = 17",
+              options: ["2", "3", "4", "5"],
+              answer: 2,
+            },
+            {
+              question:
+                "What is the area of a rectangle with length 8cm and width 5cm?",
+              options: ["30cm²", "35cm²", "40cm²", "45cm²"],
+              answer: 2,
+            },
+            {
+              question: "If a:b = 2:3 and b = 12, what is a?",
+              options: ["6", "8", "10", "12"],
+              answer: 1,
+            },
+            {
+              question: "What is 0.75 expressed as a fraction?",
+              options: ["1/2", "2/3", "3/4", "4/5"],
+              answer: 2,
+            },
+            {
+              question: "Calculate: 3² + 4²",
+              options: ["12", "20", "25", "30"],
+              answer: 2,
+            },
+            {
+              question:
+                "If the sum of two numbers is 15 and one number is 8, what is the other?",
+              options: ["5", "6", "7", "8"],
+              answer: 2,
+            },
+            {
+              question: "What is the perimeter of a square with side 6cm?",
+              options: ["18cm", "20cm", "24cm", "30cm"],
+              answer: 2,
+            },
+            {
+              question: "Simplify: 18 ÷ 3 × 2",
+              options: ["3", "6", "12", "18"],
+              answer: 2,
+            },
+            {
+              question: "What is 60% of 150?",
+              options: ["80", "90", "100", "110"],
+              answer: 1,
+            },
+            {
+              question: "If x = 3 and y = 4, what is x² + y²?",
+              options: ["12", "20", "25", "30"],
+              answer: 2,
+            },
+            {
+              question: "Convert 2.5 hours to minutes",
+              options: [
+                "120 minutes",
+                "130 minutes",
+                "140 minutes",
+                "150 minutes",
+              ],
+              answer: 3,
+            },
+            {
+              question: "What is the LCM of 4 and 6?",
+              options: ["10", "12", "16", "24"],
+              answer: 1,
+            },
+            {
+              question: "Calculate: (-3) × (-4)",
+              options: ["-12", "-7", "7", "12"],
+              answer: 3,
+            },
+            {
+              question: "What is 1/2 + 1/3?",
+              options: ["2/5", "3/5", "4/6", "5/6"],
+              answer: 3,
+            },
+            {
+              question: "If 3x = 24, what is x?",
+              options: ["6", "7", "8", "9"],
+              answer: 2,
+            },
+          ],
+          english: [
+            {
+              question: "Choose the correct spelling:",
+              options: ["Accommodate", "Acommodate", "Accomodate", "Acomodate"],
+              answer: 0,
+            },
+            {
+              question: "What is the plural of 'crisis'?",
+              options: ["Crisises", "Crisis", "Crises", "Crisess"],
+              answer: 2,
+            },
+            {
+              question: "Identify the noun in: 'The quick brown fox jumps'",
+              options: ["quick", "brown", "fox", "jumps"],
+              answer: 2,
+            },
+            {
+              question: "Which is a conjunction?",
+              options: ["quickly", "and", "happy", "run"],
+              answer: 1,
+            },
+            {
+              question:
+                "Choose the correct form: 'She ___ to school yesterday'",
+              options: ["go", "goes", "went", "going"],
+              answer: 2,
+            },
+            {
+              question: "What type of word is 'beautiful'?",
+              options: ["Noun", "Verb", "Adjective", "Adverb"],
+              answer: 2,
+            },
+            {
+              question: "Identify the preposition: 'The book is on the table'",
+              options: ["book", "is", "on", "table"],
+              answer: 2,
+            },
+            {
+              question: "Choose the synonym of 'happy':",
+              options: ["sad", "joyful", "angry", "tired"],
+              answer: 1,
+            },
+            {
+              question: "What is the past tense of 'write'?",
+              options: ["writed", "wrote", "written", "writing"],
+              answer: 1,
+            },
+            {
+              question: "Identify the pronoun: 'She gave him the book'",
+              options: ["gave", "him", "the", "book"],
+              answer: 1,
+            },
+            {
+              question: "Choose the correct article: '___ apple a day'",
+              options: ["A", "An", "The", "No article"],
+              answer: 1,
+            },
+            {
+              question: "What is an antonym of 'difficult'?",
+              options: ["hard", "easy", "tough", "complex"],
+              answer: 1,
+            },
+            {
+              question: "Identify the verb: 'The children play outside'",
+              options: ["children", "play", "outside", "the"],
+              answer: 1,
+            },
+            {
+              question: "Choose the correct form: 'He ___ been here before'",
+              options: ["have", "has", "had", "having"],
+              answer: 1,
+            },
+            {
+              question: "What is the comparative form of 'good'?",
+              options: ["gooder", "more good", "better", "best"],
+              answer: 2,
+            },
+            {
+              question: "Identify the adverb: 'She runs quickly'",
+              options: ["she", "runs", "quickly", "none"],
+              answer: 2,
+            },
+            {
+              question: "Choose the correct spelling:",
+              options: ["Necesary", "Neccessary", "Necessary", "Necessery"],
+              answer: 2,
+            },
+            {
+              question: "What is a collective noun for birds?",
+              options: ["pack", "herd", "flock", "school"],
+              answer: 2,
+            },
+            {
+              question: "Identify the subject: 'The dog barks loudly'",
+              options: ["dog", "barks", "loudly", "the"],
+              answer: 0,
+            },
+            {
+              question:
+                "Choose the correct form: 'Neither John nor his friends ___ here'",
+              options: ["is", "are", "was", "been"],
+              answer: 1,
+            },
+          ],
+          physics: [
+            {
+              question: "What is the SI unit of force?",
+              options: ["Joule", "Newton", "Watt", "Pascal"],
+              answer: 1,
+            },
+            {
+              question: "Speed of light in vacuum is approximately:",
+              options: [
+                "3 × 10⁸ m/s",
+                "3 × 10⁶ m/s",
+                "3 × 10⁵ m/s",
+                "3 × 10⁷ m/s",
+              ],
+              answer: 0,
+            },
+            {
+              question: "What is the formula for kinetic energy?",
+              options: ["mgh", "1/2mv²", "F × d", "P × V"],
+              answer: 1,
+            },
+            {
+              question: "Ohm's law states that V = ",
+              options: ["I/R", "IR", "R/I", "I + R"],
+              answer: 1,
+            },
+            {
+              question: "The unit of electric current is:",
+              options: ["Volt", "Ampere", "Ohm", "Coulomb"],
+              answer: 1,
+            },
+            {
+              question:
+                "Acceleration due to gravity on Earth is approximately:",
+              options: ["8.9 m/s²", "9.8 m/s²", "10.8 m/s²", "11.8 m/s²"],
+              answer: 1,
+            },
+            {
+              question: "What type of energy is stored in a stretched spring?",
+              options: ["Kinetic", "Potential", "Thermal", "Nuclear"],
+              answer: 1,
+            },
+            {
+              question: "The SI unit of pressure is:",
+              options: ["Newton", "Joule", "Pascal", "Watt"],
+              answer: 2,
+            },
+            {
+              question: "What is the wavelength range of visible light?",
+              options: [
+                "100-200 nm",
+                "200-400 nm",
+                "400-700 nm",
+                "700-1000 nm",
+              ],
+              answer: 2,
+            },
+            {
+              question: "Power is measured in:",
+              options: ["Joules", "Watts", "Newtons", "Pascals"],
+              answer: 1,
+            },
+            {
+              question:
+                "Which law states 'For every action, there is an equal and opposite reaction'?",
+              options: ["First law", "Second law", "Third law", "Fourth law"],
+              answer: 2,
+            },
+            {
+              question: "The refractive index of water is approximately:",
+              options: ["1.0", "1.33", "1.5", "2.0"],
+              answer: 1,
+            },
+            {
+              question: "What is the unit of work?",
+              options: ["Watt", "Newton", "Joule", "Pascal"],
+              answer: 2,
+            },
+            {
+              question: "Frequency is measured in:",
+              options: ["Seconds", "Hertz", "Meters", "Joules"],
+              answer: 1,
+            },
+            {
+              question: "The momentum of an object is the product of:",
+              options: [
+                "mass and velocity",
+                "force and time",
+                "mass and acceleration",
+                "force and distance",
+              ],
+              answer: 0,
+            },
+            {
+              question: "What type of wave is sound?",
+              options: [
+                "Transverse",
+                "Longitudinal",
+                "Electromagnetic",
+                "Surface",
+              ],
+              answer: 1,
+            },
+            {
+              question: "The SI unit of temperature is:",
+              options: ["Celsius", "Fahrenheit", "Kelvin", "Rankine"],
+              answer: 2,
+            },
+            {
+              question: "What is the charge of an electron?",
+              options: ["Positive", "Negative", "Neutral", "Variable"],
+              answer: 1,
+            },
+            {
+              question:
+                "The law of conservation of energy states that energy can be:",
+              options: ["Created", "Destroyed", "Transformed", "None"],
+              answer: 2,
+            },
+            {
+              question: "What is the SI unit of frequency?",
+              options: ["Second", "Meter", "Hertz", "Joule"],
+              answer: 2,
+            },
+          ],
+        },
+        jamb: {
+          mathematics: [
+            {
+              question: "Evaluate: log₁₀ 100",
+              options: ["1", "2", "10", "100"],
+              answer: 1,
+            },
+            {
+              question: "If sin θ = 0.5, what is θ (0° ≤ θ ≤ 90°)?",
+              options: ["30°", "45°", "60°", "90°"],
+              answer: 0,
+            },
+            {
+              question: "Simplify: (x² - 9)/(x - 3)",
+              options: ["x - 3", "x + 3", "x² + 3", "x² - 3"],
+              answer: 1,
+            },
+            {
+              question: "What is the value of π (pi) approximately?",
+              options: ["3.12", "3.14", "3.16", "3.18"],
+              answer: 1,
+            },
+            {
+              question: "If 2ˣ = 16, what is x?",
+              options: ["2", "3", "4", "5"],
+              answer: 2,
+            },
+            {
+              question: "The gradient of the line y = 3x + 5 is:",
+              options: ["3", "5", "8", "15"],
+              answer: 0,
+            },
+            {
+              question: "What is the sum of angles in a triangle?",
+              options: ["90°", "180°", "270°", "360°"],
+              answer: 1,
+            },
+            {
+              question: "Calculate: √(64)",
+              options: ["6", "7", "8", "9"],
+              answer: 2,
+            },
+            {
+              question: "If f(x) = 2x + 1, what is f(3)?",
+              options: ["5", "6", "7", "8"],
+              answer: 2,
+            },
+            {
+              question:
+                "What is the area of a circle with radius 7cm? (π = 22/7)",
+              options: ["154 cm²", "144 cm²", "164 cm²", "174 cm²"],
+              answer: 0,
+            },
+            {
+              question: "Simplify: 2³ × 2²",
+              options: ["2⁵", "2⁶", "4⁵", "8"],
+              answer: 0,
+            },
+            {
+              question: "What is the HCF of 12 and 18?",
+              options: ["2", "3", "6", "9"],
+              answer: 2,
+            },
+            {
+              question: "If a = 3, b = 4, find a² + b²",
+              options: ["7", "12", "25", "49"],
+              answer: 2,
+            },
+            {
+              question: "Convert 0.6 to a fraction:",
+              options: ["1/2", "2/3", "3/5", "4/5"],
+              answer: 2,
+            },
+            {
+              question: "What is cos 0°?",
+              options: ["0", "0.5", "1", "√3/2"],
+              answer: 2,
+            },
+            {
+              question: "Solve: x/3 = 5",
+              options: ["2", "8", "15", "18"],
+              answer: 2,
+            },
+            {
+              question:
+                "What is the circumference of a circle with diameter 14cm? (π = 22/7)",
+              options: ["22 cm", "44 cm", "88 cm", "154 cm"],
+              answer: 1,
+            },
+            {
+              question: "If 5x - 7 = 13, find x",
+              options: ["2", "3", "4", "5"],
+              answer: 2,
+            },
+            {
+              question: "What is tan 45°?",
+              options: ["0", "0.5", "1", "√3"],
+              answer: 2,
+            },
+            {
+              question: "Calculate: (3 + 4)²",
+              options: ["25", "49", "64", "81"],
+              answer: 1,
+            },
+          ],
+          english: [
+            {
+              question: "Choose the option nearest in meaning to 'ubiquitous':",
+              options: ["rare", "everywhere", "ancient", "modern"],
+              answer: 1,
+            },
+            {
+              question: "What is the meaning of the idiom 'break the ice'?",
+              options: [
+                "to freeze water",
+                "to start a conversation",
+                "to destroy something",
+                "to cool down",
+              ],
+              answer: 1,
+            },
+            {
+              question:
+                "Identify the literary device: 'The wind whispered through the trees'",
+              options: [
+                "Simile",
+                "Metaphor",
+                "Personification",
+                "Alliteration",
+              ],
+              answer: 2,
+            },
+            {
+              question:
+                "Choose the correct option: 'The committee ___ its decision'",
+              options: ["have made", "has made", "are making", "were made"],
+              answer: 1,
+            },
+            {
+              question: "What is the meaning of 'procrastinate'?",
+              options: ["to hurry", "to delay", "to complete", "to organize"],
+              answer: 1,
+            },
+            {
+              question: "Choose the antonym of 'benevolent':",
+              options: ["kind", "generous", "malevolent", "helpful"],
+              answer: 2,
+            },
+            {
+              question: "What is a synonym for 'meticulous'?",
+              options: ["careless", "careful", "quick", "slow"],
+              answer: 1,
+            },
+            {
+              question:
+                "Identify the part of speech: 'quickly' in 'He ran quickly'",
+              options: ["Noun", "Verb", "Adjective", "Adverb"],
+              answer: 3,
+            },
+            {
+              question:
+                "Choose the correct form: 'If I ___ you, I would study harder'",
+              options: ["am", "was", "were", "be"],
+              answer: 2,
+            },
+            {
+              question: "What is a 'palindrome'?",
+              options: [
+                "A type of poem",
+                "A word that reads the same forwards and backwards",
+                "A speech pattern",
+                "A writing style",
+              ],
+              answer: 1,
+            },
+            {
+              question: "Choose the correct spelling:",
+              options: ["Embarass", "Embarrass", "Embaras", "Embarras"],
+              answer: 1,
+            },
+            {
+              question:
+                "What is the passive form of 'The teacher teaches the students'?",
+              options: [
+                "The students teach the teacher",
+                "The students are taught by the teacher",
+                "The students were taught",
+                "The teacher is teaching",
+              ],
+              answer: 1,
+            },
+            {
+              question: "Identify the figure of speech: 'as brave as a lion'",
+              options: ["Metaphor", "Simile", "Hyperbole", "Irony"],
+              answer: 1,
+            },
+            {
+              question: "What does 'euphemism' mean?",
+              options: [
+                "Direct speech",
+                "Mild expression for harsh reality",
+                "Exaggeration",
+                "Contradiction",
+              ],
+              answer: 1,
+            },
+            {
+              question:
+                "Choose the correct option: 'Neither the students nor the teacher ___ present'",
+              options: ["were", "was", "are", "is"],
+              answer: 1,
+            },
+            {
+              question: "What is an 'oxymoron'?",
+              options: [
+                "Similar sounds",
+                "Contradictory terms together",
+                "Exaggeration",
+                "Comparison",
+              ],
+              answer: 1,
+            },
+            {
+              question: "Choose the synonym of 'eloquent':",
+              options: ["silent", "articulate", "confused", "simple"],
+              answer: 1,
+            },
+            {
+              question: "What does 'bibliography' mean?",
+              options: [
+                "Study of books",
+                "List of references",
+                "Book summary",
+                "Book review",
+              ],
+              answer: 1,
+            },
+            {
+              question: "Identify the tense: 'I have been studying'",
+              options: [
+                "Present perfect",
+                "Present perfect continuous",
+                "Past continuous",
+                "Future perfect",
+              ],
+              answer: 1,
+            },
+            {
+              question:
+                "Choose the correct form: 'Each of the girls ___ a prize'",
+              options: ["have", "has", "are", "were"],
+              answer: 1,
+            },
+          ],
+          physics: [
+            {
+              question: "What is the dimensional formula for force?",
+              options: ["MLT⁻¹", "MLT⁻²", "ML²T⁻²", "ML²T⁻¹"],
+              answer: 1,
+            },
+            {
+              question: "Which of these is a vector quantity?",
+              options: ["Speed", "Distance", "Velocity", "Time"],
+              answer: 2,
+            },
+            {
+              question: "What is the specific heat capacity of water?",
+              options: ["2.1 J/kg·K", "3.2 J/kg·K", "4.2 J/kg·K", "5.2 J/kg·K"],
+              answer: 2,
+            },
+            {
+              question: "In series circuit, the current is:",
+              options: [
+                "Different everywhere",
+                "Same everywhere",
+                "Zero",
+                "Infinite",
+              ],
+              answer: 1,
+            },
+            {
+              question: "The focal length of a plane mirror is:",
+              options: ["Zero", "Infinity", "1 meter", "10 cm"],
+              answer: 1,
+            },
+            {
+              question: "What is the principle of conservation of momentum?",
+              options: [
+                "Momentum can be created",
+                "Momentum is always constant",
+                "Total momentum before = Total momentum after",
+                "Momentum depends on time",
+              ],
+              answer: 2,
+            },
+            {
+              question: "The unit of magnetic flux is:",
+              options: ["Tesla", "Weber", "Henry", "Ampere"],
+              answer: 1,
+            },
+            {
+              question:
+                "What is the speed of sound in air at room temperature?",
+              options: ["230 m/s", "280 m/s", "330 m/s", "380 m/s"],
+              answer: 2,
+            },
+            {
+              question: "In a simple harmonic motion, acceleration is:",
+              options: [
+                "Constant",
+                "Proportional to displacement",
+                "Proportional to velocity",
+                "Zero",
+              ],
+              answer: 1,
+            },
+            {
+              question: "What is the SI unit of capacitance?",
+              options: ["Ohm", "Farad", "Henry", "Tesla"],
+              answer: 1,
+            },
+            {
+              question: "The resistance of a wire depends on:",
+              options: [
+                "Length only",
+                "Area only",
+                "Material only",
+                "All of the above",
+              ],
+              answer: 3,
+            },
+            {
+              question:
+                "What happens to the wavelength when frequency increases?",
+              options: ["Increases", "Decreases", "Stays same", "Becomes zero"],
+              answer: 1,
+            },
+            {
+              question: "The efficiency of a machine is:",
+              options: [
+                "Always 100%",
+                "Less than 100%",
+                "More than 100%",
+                "Can be any value",
+              ],
+              answer: 1,
+            },
+            {
+              question: "What is the work done by centripetal force?",
+              options: ["Maximum", "Minimum", "Zero", "Variable"],
+              answer: 2,
+            },
+            {
+              question: "The escape velocity from Earth is approximately:",
+              options: ["7.9 km/s", "9.8 km/s", "11.2 km/s", "15.0 km/s"],
+              answer: 2,
+            },
+            {
+              question: "In an elastic collision, what is conserved?",
+              options: [
+                "Momentum only",
+                "Kinetic energy only",
+                "Both momentum and kinetic energy",
+                "Neither",
+              ],
+              answer: 2,
+            },
+            {
+              question: "What is the unit of inductance?",
+              options: ["Farad", "Henry", "Ohm", "Weber"],
+              answer: 1,
+            },
+            {
+              question: "The potential energy of a spring is given by:",
+              options: ["1/2kx", "1/2kx²", "kx²", "kx"],
+              answer: 1,
+            },
+            {
+              question: "What type of lens is used to correct myopia?",
+              options: ["Convex", "Concave", "Cylindrical", "Bifocal"],
+              answer: 1,
+            },
+            {
+              question: "The phenomenon of total internal reflection requires:",
+              options: [
+                "Light traveling from denser to rarer medium",
+                "Light traveling from rarer to denser medium",
+                "Angle less than critical angle",
+                "Normal incidence",
+              ],
+              answer: 0,
+            },
+          ],
+          chemistry: [
+            {
+              question: "What is the atomic number of Carbon?",
+              options: ["4", "6", "8", "12"],
+              answer: 1,
+            },
+            {
+              question: "Which gas is most abundant in Earth's atmosphere?",
+              options: ["Oxygen", "Carbon dioxide", "Nitrogen", "Hydrogen"],
+              answer: 2,
+            },
+            {
+              question: "What is the pH of a neutral solution?",
+              options: ["0", "7", "14", "1"],
+              answer: 1,
+            },
+            {
+              question: "The molecular formula of water is:",
+              options: ["H₂O", "H₂O₂", "HO", "H₃O"],
+              answer: 0,
+            },
+            {
+              question: "What type of bond is present in NaCl?",
+              options: ["Covalent", "Ionic", "Metallic", "Hydrogen"],
+              answer: 1,
+            },
+            {
+              question: "The oxidation state of oxygen in H₂O is:",
+              options: ["+2", "-2", "+1", "-1"],
+              answer: 1,
+            },
+            {
+              question: "Which element has the symbol 'Fe'?",
+              options: ["Fluorine", "Iron", "Ferrum", "Francium"],
+              answer: 1,
+            },
+            {
+              question: "What is Avogadro's number?",
+              options: [
+                "6.02 × 10²³",
+                "6.02 × 10²²",
+                "6.02 × 10²⁴",
+                "6.02 × 10²¹",
+              ],
+              answer: 0,
+            },
+            {
+              question:
+                "The process of converting solid directly to gas is called:",
+              options: [
+                "Evaporation",
+                "Sublimation",
+                "Condensation",
+                "Melting",
+              ],
+              answer: 1,
+            },
+            {
+              question: "What is the common name for NaHCO₃?",
+              options: [
+                "Washing soda",
+                "Baking soda",
+                "Caustic soda",
+                "Soda ash",
+              ],
+              answer: 1,
+            },
+            {
+              question: "Which is a noble gas?",
+              options: ["Oxygen", "Nitrogen", "Helium", "Hydrogen"],
+              answer: 2,
+            },
+            {
+              question: "The empirical formula of glucose is:",
+              options: ["C₆H₁₂O₆", "CH₂O", "C₂H₄O₂", "CHO"],
+              answer: 1,
+            },
+            {
+              question: "What is the valency of nitrogen in NH₃?",
+              options: ["1", "2", "3", "4"],
+              answer: 2,
+            },
+            {
+              question: "The functional group in alcohols is:",
+              options: ["-COOH", "-CHO", "-OH", "-NH₂"],
+              answer: 2,
+            },
+            {
+              question: "What is the molar mass of H₂O?",
+              options: ["16 g/mol", "18 g/mol", "20 g/mol", "22 g/mol"],
+              answer: 1,
+            },
+            {
+              question: "Which acid is present in vinegar?",
+              options: [
+                "Citric acid",
+                "Acetic acid",
+                "Formic acid",
+                "Lactic acid",
+              ],
+              answer: 1,
+            },
+            {
+              question: "The process of rusting is an example of:",
+              options: [
+                "Reduction",
+                "Oxidation",
+                "Neutralization",
+                "Decomposition",
+              ],
+              answer: 1,
+            },
+            {
+              question:
+                "What is the electron configuration of sodium (Na, Z=11)?",
+              options: ["2,8", "2,8,1", "2,8,2", "2,8,8"],
+              answer: 1,
+            },
+            {
+              question: "Which is an endothermic reaction?",
+              options: [
+                "Combustion",
+                "Photosynthesis",
+                "Respiration",
+                "Neutralization",
+              ],
+              answer: 1,
+            },
+            {
+              question: "The SI unit of amount of substance is:",
+              options: ["Gram", "Kilogram", "Mole", "Liter"],
+              answer: 2,
+            },
+          ],
+        },
+      };
+
+      let currentExamType = "";
+      let currentSubject = "";
+      let currentQuestionIndex = 0;
+      let userAnswers = [];
+      let questions = [];
+      let timer;
+      let timeLeft = 3600; // 60 minutes
+
+      function showExamSelection() {
+        document.getElementById("welcomeScreen").classList.add("hidden");
+        document.getElementById("examSelection").classList.remove("hidden");
+      }
+
+      function showWelcome() {
+        document.getElementById("examSelection").classList.add("hidden");
+        document.getElementById("welcomeScreen").classList.remove("hidden");
+        document.getElementById("subjectSelection").classList.add("hidden");
+      }
+
+      function selectExamType(type) {
+        currentExamType = type;
+
+        // Remove previous selection
+        document.querySelectorAll(".exam-card").forEach((card) => {
+          card.classList.remove("selected");
+        });
+
+        // Add selection to clicked card
+        event.target.closest(".exam-card").classList.add("selected");
+
+        // Show subject selection
+        const subjectSelection = document.getElementById("subjectSelection");
+        subjectSelection.classList.remove("hidden");
+
+        // Populate subjects
+        const subjects = Object.keys(examData[type]);
+        const subjectButtons = document.getElementById("subjectButtons");
+        subjectButtons.innerHTML = "";
+
+        subjects.forEach((subject) => {
+          const btn = document.createElement("button");
+          btn.className = "subject-btn";
+          btn.textContent = subject.charAt(0).toUpperCase() + subject.slice(1);
+          btn.onclick = () => selectSubject(subject, btn);
+          subjectButtons.appendChild(btn);
+        });
+      }
+
+      function selectSubject(subject, btn) {
+        currentSubject = subject;
+
+        // Remove previous selection
+        document.querySelectorAll(".subject-btn").forEach((button) => {
+          button.classList.remove("selected");
+        });
+
+        // Add selection to clicked button
+        btn.classList.add("selected");
+      }
+
+      function startExam() {
+        if (!currentSubject) {
+          alert("Please select a subject before starting the exam");
+          return;
+        }
+
+        // Load questions
+        questions = examData[currentExamType][currentSubject];
+        userAnswers = new Array(questions.length).fill(null);
+        currentQuestionIndex = 0;
+
+        // Show exam screen
+        document.getElementById("examSelection").classList.add("hidden");
+        document.getElementById("examScreen").classList.remove("hidden");
+        document.querySelector(".timer").classList.remove("hidden");
+
+        // Start timer
+        startTimer();
+
+        // Display first question
+        displayQuestion();
+      }
+
+      function startTimer() {
+        timer = setInterval(() => {
+          timeLeft--;
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
+          document.getElementById("timerDisplay").textContent = `${minutes
+            .toString()
+            .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            submitExam();
+          }
+        }, 1000);
+      }
+
+      function displayQuestion() {
+        const question = questions[currentQuestionIndex];
+
+        // Update progress
+        document.getElementById("currentQuestion").textContent =
+          currentQuestionIndex + 1;
+        document.getElementById("totalQuestions").textContent =
+          questions.length;
+        document.getElementById("examSubject").textContent =
+          currentSubject.charAt(0).toUpperCase() + currentSubject.slice(1);
+
+        // Display question
+        document.getElementById("questionText").textContent = question.question;
+
+        // Display options
+        const optionsContainer = document.getElementById("optionsContainer");
+        optionsContainer.innerHTML = "";
+
+        const optionLetters = ["A", "B", "C", "D"];
+        question.options.forEach((option, index) => {
+          const optionDiv = document.createElement("div");
+          optionDiv.className = "option";
+          if (userAnswers[currentQuestionIndex] === index) {
+            optionDiv.classList.add("selected");
+          }
+
+          optionDiv.innerHTML = `
+                    <div class="option-letter">${optionLetters[index]}</div>
+                    <div>${option}</div>
+                `;
+
+          optionDiv.onclick = () => selectOption(index);
+          optionsContainer.appendChild(optionDiv);
+        });
+
+        // Update button visibility
+        document.getElementById("prevBtn").style.display =
+          currentQuestionIndex === 0 ? "none" : "block";
+        document.getElementById("nextBtn").style.display =
+          currentQuestionIndex === questions.length - 1 ? "none" : "block";
+        document
+          .getElementById("submitBtn")
+          .classList.toggle(
+            "hidden",
+            currentQuestionIndex !== questions.length - 1
+          );
+      }
+
+      function selectOption(optionIndex) {
+        userAnswers[currentQuestionIndex] = optionIndex;
+
+        // Update UI
+        document.querySelectorAll(".option").forEach((opt, idx) => {
+          opt.classList.toggle("selected", idx === optionIndex);
+        });
+      }
+
+      function nextQuestion() {
+        if (currentQuestionIndex < questions.length - 1) {
+          currentQuestionIndex++;
+          displayQuestion();
+        }
+      }
+
+      function previousQuestion() {
+        if (currentQuestionIndex > 0) {
+          currentQuestionIndex--;
+          displayQuestion();
+        }
+      }
+
+      function submitExam() {
+        clearInterval(timer);
+
+        // Calculate score
+        let score = 0;
+        questions.forEach((question, index) => {
+          if (userAnswers[index] === question.answer) {
+            score++;
+          }
+        });
+
+        const percentage = Math.round((score / questions.length) * 100);
+
+        // Hide exam screen
+        document.getElementById("examScreen").classList.add("hidden");
+
+        // Show results
+        document.getElementById("resultsScreen").classList.remove("hidden");
+        document.querySelector(".timer").classList.add("hidden");
+
+        // Display score
+        document.getElementById("scoreCircle").textContent = percentage + "%";
+        document.getElementById(
+          "scoreText"
+        ).textContent = `${score} out of ${questions.length}`;
+
+        // Performance text
+        let performanceText = "";
+        if (percentage >= 80) {
+          performanceText = "🌟 Excellent! Outstanding performance!";
+        } else if (percentage >= 60) {
+          performanceText = "👍 Good job! Keep practicing!";
+        } else if (percentage >= 40) {
+          performanceText = "📚 Fair. You need more practice!";
+        } else {
+          performanceText = "💪 Keep studying and try again!";
+        }
+        document.getElementById("performanceText").textContent =
+          performanceText;
+
+        // Display answer review
+        const reviewContainer = document.getElementById("answerReview");
+        reviewContainer.innerHTML =
+          '<h3 style="margin-bottom: 20px;">Answer Review</h3>';
+
+        const optionLetters = ["A", "B", "C", "D"];
+        questions.forEach((question, index) => {
+          const isCorrect = userAnswers[index] === question.answer;
+          const reviewItem = document.createElement("div");
+          reviewItem.className = `review-item ${
+            isCorrect ? "correct" : "incorrect"
+          }`;
+
+          reviewItem.innerHTML = `
+                    <div style="font-weight: bold; margin-bottom: 10px;">
+                        Question ${index + 1}: ${
+            isCorrect ? "✓ Correct" : "✗ Incorrect"
+          }
+                    </div>
+                    <div style="margin-bottom: 10px;">${question.question}</div>
+                    <div style="font-size: 14px; color: #666;">
+                        Your answer: ${
+                          userAnswers[index] !== null
+                            ? optionLetters[userAnswers[index]] +
+                              ". " +
+                              question.options[userAnswers[index]]
+                            : "Not answered"
+                        }<br>
+                        ${
+                          !isCorrect
+                            ? `Correct answer: ${
+                                optionLetters[question.answer]
+                              }. ${question.options[question.answer]}`
+                            : ""
+                        }
+                    </div>
+                `;
+
+          reviewContainer.appendChild(reviewItem);
+        });
+      }
+
+      // Try to submit result to server so progress is recorded (non-blocking)
+      (async function submitResult() {
+        try {
+          const token = localStorage.getItem("currentToken");
+          const userRaw = localStorage.getItem("currentUser");
+          const user = userRaw ? JSON.parse(userRaw) : null;
+          if (!token || !user || !user.id) {
+            // Not logged in; skip server submit but inform user
+            const msg = document.createElement("div");
+            msg.className = "alert alert-info mt-3";
+            msg.textContent =
+              "To store this score so parents and your dashboard can see it, please log in.";
+            reviewContainer.appendChild(msg);
+            return;
+          }
+
+          const payload = {
+            student_user_id: user.id,
+            exam_name:
+              (currentExamType || "practice").toUpperCase() +
+              " - " +
+              (currentSubject || "general"),
+            marks_obtained: score,
+            total_marks: questions.length,
+            date: new Date().toISOString(),
+          };
+
+          const res = await fetch("http://localhost:8000/student-results", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) {
+            const d = await res.json().catch(() => ({}));
+            const det =
+              d.detail ||
+              d.message ||
+              JSON.stringify(d) ||
+              "Failed to record result";
+            const warn = document.createElement("div");
+            warn.className = "alert alert-warning mt-3";
+            warn.textContent = `Result saved locally but server returned: ${
+              typeof det === "string" ? det : JSON.stringify(det)
+            }`;
+            reviewContainer.appendChild(warn);
+            return;
+          }
+          const data = await res.json().catch(() => ({}));
+          const ok = document.createElement("div");
+          ok.className = "alert alert-success mt-3";
+          ok.textContent = "Result recorded to server.";
+          reviewContainer.appendChild(ok);
+        } catch (err) {
+          const warn = document.createElement("div");
+          warn.className = "alert alert-warning mt-3";
+          warn.textContent =
+            "Result saved locally; failed to submit to server: " +
+            (err && err.message ? err.message : String(err));
+          reviewContainer.appendChild(warn);
+        }
+      })();
+    </script>
+  </body>
+</html>

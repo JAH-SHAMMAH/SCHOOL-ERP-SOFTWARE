@@ -1,0 +1,303 @@
+<!-- Payment Modal -->
+<html>
+  <div id="paymentModal" class="modal-overlay d-none">
+    <div class="modal-content">
+      <span id="closeModal" class="close">&times;</span>
+
+      <div id="paymentOptions">
+        <h2 class="modal-title">Make a Payment</h2>
+        <p class="text-muted">Select your preferred payment method</p>
+
+        <div class="payment-buttons">
+          <button id="cardPaymentBtn" class="btn btn-primary">
+            💳 Pay with Card
+          </button>
+          <button id="bankTransferBtn" class="btn btn-secondary">
+            🏦 Pay via Bank Transfer
+          </button>
+        </div>
+      </div>
+
+      <!-- Card Payment Section -->
+      <div id="cardPaymentSection" class="d-none">
+        <h3>Card Payment</h3>
+        <form id="cardPaymentForm">
+          <input
+            type="text"
+            id="cardName"
+            placeholder="Full Name"
+            class="form-input"
+            required
+          />
+          <input
+            type="email"
+            id="cardEmail"
+            placeholder="Email Address"
+            class="form-input"
+            required
+          />
+          <input
+            type="number"
+            id="cardAmount"
+            placeholder="Amount (₦)"
+            class="form-input"
+            required
+          />
+
+          <button type="submit" class="btn btn-primary w-100">
+            Proceed to Paystack →
+          </button>
+        </form>
+      </div>
+
+      <!-- Bank Transfer Section -->
+      <div id="bankTransferSection" class="d-none">
+        <h3>Bank Transfer</h3>
+        <p>Enter your registered email to generate a virtual account:</p>
+        <input
+          type="email"
+          id="bankEmail"
+          placeholder="Email Address"
+          class="form-input"
+          required
+        />
+        <button id="generateAccountBtn" class="btn btn-primary w-100 mt-2">
+          Generate Account
+        </button>
+
+        <div id="bankTransferDetails" class="account-details d-none mt-3">
+          <div id="accountInfo">Fetching account details...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</html>
+
+<style>
+  /* === Modal Overlay === */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(10, 10, 10, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 999;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  .modal-content {
+    background: #fff;
+    border-radius: 16px;
+    padding: 25px 30px;
+    width: 420px;
+    max-width: 90%;
+    position: relative;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.4s ease-out;
+  }
+
+  .close {
+    position: absolute;
+    right: 15px;
+    top: 10px;
+    cursor: pointer;
+    font-size: 22px;
+    color: #888;
+  }
+
+  .modal-title {
+    margin-bottom: 10px;
+  }
+
+  .text-muted {
+    color: #777;
+    font-size: 14px;
+    margin-bottom: 20px;
+  }
+
+  .payment-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .btn {
+    padding: 12px 15px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+  }
+
+  .btn-primary {
+    background: #0a0a66;
+    color: #fff;
+  }
+
+  .btn-primary:hover {
+    background: #111199;
+  }
+
+  .btn-secondary {
+    background: #f3f3f3;
+    color: #333;
+    border: 1px solid #ccc;
+  }
+
+  .btn-secondary:hover {
+    background: #e6e6e6;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 15px;
+  }
+
+  .account-details {
+    background: #f8f9fb;
+    border-radius: 10px;
+    padding: 15px;
+    margin-top: 10px;
+    text-align: left;
+    font-size: 15px;
+  }
+
+  .w-100 {
+    width: 100%;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  .d-none {
+    display: none;
+  }
+</style>
+
+<script>
+  const API_BASE = "/payments";
+
+  const modal = document.getElementById("paymentModal");
+  const closeModal = document.getElementById("closeModal");
+
+  const cardBtn = document.getElementById("cardPaymentBtn");
+  const bankBtn = document.getElementById("bankTransferBtn");
+  const cardSection = document.getElementById("cardPaymentSection");
+  const bankSection = document.getElementById("bankTransferSection");
+  const paymentOptions = document.getElementById("paymentOptions");
+
+  // 🔹 Open Modal
+  function openPaymentModal() {
+    modal.classList.remove("d-none");
+  }
+
+  // 🔹 Close Modal
+  closeModal.onclick = () => {
+    modal.classList.add("d-none");
+    cardSection.classList.add("d-none");
+    bankSection.classList.add("d-none");
+    paymentOptions.classList.remove("d-none");
+  };
+
+  // 🔹 Card Payment Click
+  cardBtn.onclick = () => {
+    paymentOptions.classList.add("d-none");
+    cardSection.classList.remove("d-none");
+  };
+
+  // 🔹 Bank Transfer Click
+  bankBtn.onclick = () => {
+    paymentOptions.classList.add("d-none");
+    bankSection.classList.remove("d-none");
+  };
+
+  // 🔹 Card Payment Form Submit
+  document
+    .getElementById("cardPaymentForm")
+    .addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const email = document.getElementById("cardEmail").value;
+      const name = document.getElementById("cardName").value;
+      const amount = document.getElementById("cardAmount").value;
+
+      const res = await fetch(`${API_BASE}/initialize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          amount: parseInt(amount),
+          name,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.status) {
+        window.location.href = data.payment_url; // Redirect to Paystack
+      } else {
+        alert("Error initializing payment");
+      }
+    });
+
+  // 🔹 Bank Transfer (Virtual Account)
+  document
+    .getElementById("generateAccountBtn")
+    .addEventListener("click", async () => {
+      const email = document.getElementById("bankEmail").value;
+      const accountInfo = document.getElementById("accountInfo");
+      const detailsDiv = document.getElementById("bankTransferDetails");
+
+      if (!email) return alert("Please enter your email.");
+
+      accountInfo.textContent = "Generating virtual account...";
+      detailsDiv.classList.remove("d-none");
+
+      const res = await fetch(`${API_BASE}/virtual-account`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await res.json();
+      if (data.account_number) {
+        accountInfo.innerHTML = `
+          <p><strong>Bank:</strong> ${data.bank_name}</p>
+          <p><strong>Account Number:</strong> ${data.account_number}</p>
+          <p><strong>Account Name:</strong> ${data.account_name}</p>
+          <small class="text-muted">
+            Use this account to make your payment. It is linked to your profile.
+          </small>
+        `;
+      } else {
+        accountInfo.innerHTML = `<p style="color:red;">${
+          data.detail || "Could not generate account."
+        }</p>`;
+      }
+    });
+</script>

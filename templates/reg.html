@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School ERP - Register</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        padding: 20px 0;
+      }
+
+      .register-container {
+        width: 100%;
+        max-width: 500px;
+        padding: 20px;
+      }
+
+      .register-card {
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.5s ease;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .register-card h2 {
+        color: #667eea;
+        margin-bottom: 10px;
+        text-align: center;
+        font-weight: 600;
+      }
+
+      .register-card p {
+        text-align: center;
+        color: #666;
+        margin-bottom: 30px;
+      }
+
+      .form-label {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 14px;
+      }
+
+      .form-control,
+      .form-select {
+        border-radius: 10px;
+        border: 2px solid #e0e0e0;
+        padding: 12px 15px;
+        transition: all 0.3s;
+        font-size: 14px;
+      }
+
+      .form-control:focus,
+      .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 10px;
+        padding: 12px;
+        font-weight: 600;
+        transition: transform 0.2s;
+        font-size: 16px;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+      }
+
+      .btn-primary:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: white;
+        animation: spin 1s ease-in-out infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .d-none {
+        display: none !important;
+      }
+
+      .alert {
+        border-radius: 10px;
+        border: none;
+        padding: 12px 15px;
+        font-size: 14px;
+      }
+
+      .text-primary {
+        color: #667eea !important;
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .text-primary:hover {
+        text-decoration: underline;
+      }
+
+      .password-requirements {
+        font-size: 12px;
+        color: #666;
+        margin-top: 5px;
+      }
+
+      .mb-3 {
+        margin-bottom: 1rem !important;
+      }
+
+      .mb-4 {
+        margin-bottom: 1.5rem !important;
+      }
+
+      .text-center {
+        text-align: center;
+      }
+
+      .mt-3 {
+        margin-top: 1rem !important;
+      }
+
+      small {
+        font-size: 14px;
+      }
+
+      .text-muted {
+        color: #6c757d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="register-container">
+      <div class="register-card">
+        <h2><i class="fas fa-user-plus"></i> Create Account</h2>
+        <p>Join School ERP System</p>
+
+        <div id="registerAlert" class="alert d-none"></div>
+
+        <form id="registerForm">
+          <div class="mb-3">
+            <label class="form-label">Full Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="registerFullName"
+              required
+              placeholder="Enter your full name"
+            />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Email Address</label>
+            <input
+              type="email"
+              class="form-control"
+              id="registerEmail"
+              required
+              placeholder="Enter your email"
+            />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Phone Number</label>
+            <input
+              type="tel"
+              class="form-control"
+              id="registerPhone"
+              required
+              placeholder="Enter your phone number"
+            />
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select class="form-select" id="registerRole" required>
+              <option value="">Select your role</option>
+              <option value="admin">Admin</option>
+              <option value="teacher">Teacher</option>
+              <option value="student">Student</option>
+              <option value="parent">Parent</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="registerPassword"
+              required
+              placeholder="Create a password"
+              minlength="6"
+            />
+            <div class="password-requirements">
+              Password must be at least 6 characters long
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label">Confirm Password</label>
+            <input
+              type="password"
+              class="form-control"
+              id="registerConfirmPassword"
+              required
+              placeholder="Confirm your password"
+              minlength="6"
+            />
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100" id="registerBtn">
+            <span id="registerBtnText">Create Account</span>
+            <span id="registerLoading" class="loading d-none"></span>
+          </button>
+        </form>
+
+        <div class="text-center mt-3">
+          <small class="text-muted">
+            Already have an account?
+            <a href="register" class="text-primary">Sign in</a>
+          </small>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "http://localhost:8000"; // Update with your API URL
+
+      const registerForm = document.getElementById("registerForm");
+      const registerBtn = document.getElementById("registerBtn");
+      const registerBtnText = document.getElementById("registerBtnText");
+      const registerLoading = document.getElementById("registerLoading");
+      const registerAlert = document.getElementById("registerAlert");
+
+      // Show alert function
+      function showAlert(message, type = "danger") {
+        registerAlert.textContent = message;
+        registerAlert.className = `alert alert-${type}`;
+        registerAlert.classList.remove("d-none");
+
+        // Auto-hide after 5 seconds for error messages
+        if (type === "danger") {
+          setTimeout(() => {
+            registerAlert.classList.add("d-none");
+          }, 5000);
+        }
+      }
+
+      // Register form submission
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const fullName = document
+          .getElementById("registerFullName")
+          .value.trim();
+        const email = document.getElementById("registerEmail").value.trim();
+        const phone = document.getElementById("registerPhone").value.trim();
+        const role = document.getElementById("registerRole").value;
+        const password = document.getElementById("registerPassword").value;
+        const confirmPassword = document.getElementById(
+          "registerConfirmPassword"
+        ).value;
+
+        // Validate passwords match
+        if (password !== confirmPassword) {
+          showAlert("Passwords do not match", "danger");
+          return;
+        }
+
+        // Validate password length
+        if (password.length < 6) {
+          showAlert("Password must be at least 6 characters long", "danger");
+          return;
+        }
+
+        // Validate role selected
+        if (!role) {
+          showAlert("Please select a role", "danger");
+          return;
+        }
+
+        // Show loading state
+        registerBtn.disabled = true;
+        registerBtnText.classList.add("d-none");
+        registerLoading.classList.remove("d-none");
+        registerAlert.classList.add("d-none");
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/register`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              full_name: fullName,
+              email: email,
+              phone: phone,
+              role: role,
+              password: password,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            // Success - show message and redirect
+            showAlert(
+              "Account created successfully! Redirecting to login...",
+              "success"
+            );
+
+            // Clear form
+            registerForm.reset();
+
+            // Redirect to login page after 2 seconds
+            setTimeout(() => {
+              window.location.href = "register";
+            }, 2000);
+          } else {
+            // Show error message from API
+            showAlert(
+              data.detail || "Registration failed. Please try again.",
+              "danger"
+            );
+          }
+        } catch (error) {
+          console.error("Registration error:", error);
+          showAlert(
+            "Network error. Please check your connection and try again.",
+            "danger"
+          );
+        } finally {
+          // Reset button state
+          registerBtn.disabled = false;
+          registerBtnText.classList.remove("d-none");
+          registerLoading.classList.add("d-none");
+        }
+      });
+
+      // Real-time password confirmation validation
+      document
+        .getElementById("registerConfirmPassword")
+        .addEventListener("input", (e) => {
+          const password = document.getElementById("registerPassword").value;
+          const confirmPassword = e.target.value;
+
+          if (confirmPassword && password !== confirmPassword) {
+            e.target.setCustomValidity("Passwords do not match");
+          } else {
+            e.target.setCustomValidity("");
+          }
+        });
+    </script>
+  </body>
+</html>
