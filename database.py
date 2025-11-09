@@ -3,10 +3,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-RENDER_DB_URL = (
-    "postgresql+psycopg2://fair_db_3dt1_user:aUKA3NxUNQ1lPRlET7ARJGiNn5Em30Co@"
-    "dpg-d48fv8k9c44c73b4oakg-a.render.com:5432/fair_db_3dt1"
-)
+RENDER_DB_URL = "postgresql+psycopg2://fair_db_3dt1_user:aUKA3NxUNQ1lPRlET7ARJGiNn5Em30Co@dpg-d48fv8k9c44c73b4oakg-a.ohio-postgres.render.com/fair_db_3dt1"
 
 
 DATABASE_URL = os.getenv("DATABASE_URL", RENDER_DB_URL)
