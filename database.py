@@ -4,9 +4,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 RENDER_DB_URL = (
-    "postgresql+psycopg2://fair_db_3dt1_user:"
-    "aUKA3NxUNQ1lPRlET7ARJGiNn5Em30Co@"
+    "postgresql+psycopg2://fair_db_3dt1_user:aUKA3NxUNQ1lPRlET7ARJGiNn5Em30Co@"
     "dpg-d48fv8k9c44c73b4oakg-a.ohio-postgres.render.com:5432/fair_db_3dt1"
+    "?sslmode=require"
 )
 
 
