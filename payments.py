@@ -18,7 +18,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 # ✅ Get from environment variable or .env file
 PAYSTACK_SECRET_KEY = os.getenv(
-    "PAYSTACK_SECRET_KEY", "sk_test_96b4637f82719b6414d3fc52efebab424f1eb8c0"
+    "PAYSTACK_SECRET_KEY", "sk_test_7c0d95a2069f9c0d4a0eab3c8ac14c93c45ebde4"
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")

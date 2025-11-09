@@ -16,11 +16,21 @@ from sqlalchemy import (
     create_engine,
 )
 from sqlalchemy.orm import relationship, declarative_base
+from database import *
 
-DATABASE_URL = "sqlite:///./fair.db"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:guarantee@localhost:5432/fair_db"
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 class UserRole(enum.Enum):
@@ -92,7 +102,9 @@ class Student(Base):
     __tablename__ = "students"
 
     id = Column(String(36), primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(
+        String(36), ForeignKey("users.id"), nullable=False
+    )  # <- changed to String(36)
     first_name = Column(String(150), nullable=False)
     last_name = Column(String(150), nullable=False)
     dob = Column(Date, nullable=True)
@@ -452,4 +464,4 @@ def init_db():
 if __name__ == "__main__":
     # quick create the DB for development
     init_db()
-    print("Database & tables created (SQLite) at:", DATABASE_URL)
+    print("Database & tables created (SQLite) at:", SQLALCHEMY_DATABASE_URL)

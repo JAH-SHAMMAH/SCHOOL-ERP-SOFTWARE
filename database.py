@@ -2,13 +2,11 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
+# Example PostgreSQL URL format:
+# postgresql://username:password@hostname:port/databasename
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:guarantee@localhost:5432/fair_db"
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./fair.db"
-
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False},  # Only for SQLite
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
