@@ -1,12 +1,12 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
 # Example PostgreSQL URL format:
 # postgresql://username:password@hostname:port/databasename
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:guarantee@localhost:5432/fair_db"
-
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+DATABASE_URL = os.environ.get("DATABASE_URL")
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
