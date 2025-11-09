@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 from models import *
 
 # Default fallback in case the environment variable is not set
-RENDER_DB_URL = "postgresql://fair_db_p5ql_user:NNxkO7ABkYa1sJ3ZWgcrtVYxJ6TA6r68@dpg-d48btkk9c44c73b2jjk0-a/fair_db_p5ql"
+RENDER_DB_URL = "postgresql+psycopg2://fair_db_p5ql_user:NNxkO7ABkYa1sJ3ZWgcrtVYxJ6TA6r68@dpg-d48btkk9c44c73b2jjk0-a/fair_db_p5ql"
 
 # Correct: get the DATABASE_URL environment variable if it exists, otherwise use fallback
 DATABASE_URL = os.environ.get("DATABASE_URL", RENDER_DB_URL)

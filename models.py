@@ -20,7 +20,7 @@ from database import *
 from sqlalchemy.orm import sessionmaker
 
 # DATABASE_URL = "postgresql://postgres:guarantee@DATABASE_URL/fair_db"
-# engine = create_engine(DATABASE_URL)
+engine = create_engine(DATABASE_URL)
 
 # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
