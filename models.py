@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship, declarative_base
 from database import *
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:guarantee@localhost:5432/fair_db"
+SQLALCHEMY_DATABASE_URL = "postgresql://postgres:guarantee@DATABASE_URL/fair_db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
