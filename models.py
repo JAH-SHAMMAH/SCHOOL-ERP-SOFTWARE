@@ -20,7 +20,7 @@ from database import *
 from sqlalchemy.orm import sessionmaker
 
 # DATABASE_URL = "postgresql://postgres:guarantee@DATABASE_URL/fair_db"
-engine = create_engine(DATABASE_URL)
+# engine = create_engine(DATABASE_URL)
 
 # SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
@@ -458,11 +458,11 @@ class WebhookEvent(Base):
 
 
 # ---------- Create tables convenience ----------
-def init_db():
-    Base.metadata.create_all(bind=engine)
+# def init_db():
+#     Base.metadata.create_all(bind=engine)
 
 
-if __name__ == "__main__":
-    # quick create the DB for development
-    init_db()
-    print("Database & tables created (SQLite) at:", DATABASE_URL)
+# if __name__ == "__main__":
+#     # quick create the DB for development
+#     init_db()
+#     print("Database & tables created (SQLite) at:", DATABASE_URL)
