@@ -17,20 +17,21 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship, declarative_base
 from database import *
+from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql://postgres:guarantee@DATABASE_URL/fair_db"
-engine = create_engine(DATABASE_URL)
+# DATABASE_URL = "postgresql://postgres:guarantee@DATABASE_URL/fair_db"
+# engine = create_engine(DATABASE_URL)
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+# SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# Base = declarative_base()
 
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+# def get_db():
+#     db = SessionLocal()
+#     try:
+#         yield db
+#     finally:
+#         db.close()
 
 
 class UserRole(enum.Enum):
@@ -464,4 +465,4 @@ def init_db():
 if __name__ == "__main__":
     # quick create the DB for development
     init_db()
-    print("Database & tables created (SQLite) at:", SQLALCHEMY_DATABASE_URL)
+    print("Database & tables created (SQLite) at:", DATABASE_URL)
