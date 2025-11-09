@@ -68,15 +68,26 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
-def init_db():
-    Base.metadata.create_all(bind=engine)
+# def init_db():
+#     Base.metadata.create_all(bind=engine)
+
+Base.metadata.create_all(bind=engine)
+
+
+# Dependency for getting DB session
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # Call it when the app starts
-@app.on_event("startup")
-async def startup_event():
-    init_db()
-    print("Database tables created successfully!")
+# @app.on_event("startup")
+# async def startup_event():
+#     init_db()
+#     print("Database tables created successfully!")
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
