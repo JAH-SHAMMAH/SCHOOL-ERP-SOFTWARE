@@ -1,4 +1,8 @@
 import os
+
+# Force tests to use a local SQLite file DB to avoid touching remote/production DB
+os.environ["DATABASE_URL"] = "sqlite:///./test_temp.db"
+
 import json
 import hmac
 import hashlib
@@ -6,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 import requests_mock
 
+# Import after setting DATABASE_URL so the app/database engine use the test DB
 from main import app, create_access_token
 from database import SessionLocal
 from models import User, Payment, WebhookEvent, init_db
@@ -87,7 +92,9 @@ def test_verify_updates_payment(monkeypatch):
     db = SessionLocal()
     try:
         user = db.query(User).filter(User.email.like("%test-parent-1%")).first()
-        assert user
+        if not user:
+            # create a fresh test user if previous test didn't run
+            user = create_test_user(db, user_id="test-parent-1")
         # create a payment record
         p = Payment(
             parent_id=user.id,
@@ -126,7 +133,14 @@ def test_verify_updates_payment(monkeypatch):
             data = res.json()
             assert data.get("status") == "success"
 
-            # DB should be updated
+            # DB should be updated. refresh the instance to get latest state
+            try:
+                db.refresh(p)
+            except Exception:
+                # fallback: re-query in a fresh session
+                db.close()
+                db = SessionLocal()
+
             p2 = db.query(Payment).filter(Payment.reference == "verify-ref-1").first()
             assert p2.status == "paid"
             assert p2.transaction_id == str(555)

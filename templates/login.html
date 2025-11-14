@@ -1707,67 +1707,144 @@
           title: "Main",
           items: [
             { endpoint: "dashboard", icon: "fa-home", label: "Dashboard" },
+            {
+              endpoint: "news-feed",
+              icon: "fa-newspaper",
+              label: "News Feed & Birthdays",
+            },
           ],
         });
         if (role === "admin") {
           sections.push({
-            title: "Authentication",
+            title: "Communications",
             items: [
+              { endpoint: "admin-sms", icon: "fa-sms", label: "SMS/WhatsApp" },
               {
-                endpoint: "register",
-                icon: "fa-user-plus",
-                label: "Register User",
+                endpoint: "admin-mailbox",
+                icon: "fa-envelope",
+                label: "Mailbox",
               },
-              { endpoint: "profile", icon: "fa-user", label: "My Profile" },
-              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
-            ],
-          });
-          sections.push({
-            title: "Students",
-            items: [
-              { endpoint: "students", icon: "fa-users", label: "All Students" },
               {
-                endpoint: "add-student",
-                icon: "fa-user-plus",
-                label: "Add Student",
+                endpoint: "admin-news-feed",
+                icon: "fa-newspaper",
+                label: "News Feed",
               },
             ],
           });
           sections.push({
-            title: "Teachers",
+            title: "Academic Management",
             items: [
               {
-                endpoint: "teachers",
+                endpoint: "admin-e-classroom",
+                icon: "fa-video",
+                label: "E-Classroom",
+              },
+              {
+                endpoint: "admin-lesson-planner",
+                icon: "fa-calendar-day",
+                label: "Lesson Planner",
+              },
+              {
+                endpoint: "admin-assignments",
+                icon: "fa-tasks",
+                label: "Assignments",
+              },
+              { endpoint: "admin-cbт", icon: "fa-laptop", label: "CBT" },
+              {
+                endpoint: "admin-classes",
+                icon: "fa-door-open",
+                label: "Classes",
+              },
+              {
+                endpoint: "admin-subjects",
+                icon: "fa-book",
+                label: "Subjects",
+              },
+              { endpoint: "admin-exams", icon: "fa-file-alt", label: "Exams" },
+            ],
+          });
+          sections.push({
+            title: "HR & Staff",
+            items: [
+              {
+                endpoint: "admin-hr",
+                icon: "fa-users-cog",
+                label: "HR Management",
+              },
+              {
+                endpoint: "admin-teachers",
                 icon: "fa-chalkboard-teacher",
-                label: "All Teachers",
+                label: "Teachers",
               },
               {
-                endpoint: "add-teacher",
-                icon: "fa-user-plus",
-                label: "Add Teacher",
+                endpoint: "admin-parents",
+                icon: "fa-user-tie",
+                label: "Parents Management",
               },
             ],
           });
           sections.push({
-            title: "Academic",
+            title: "Students & Welfare",
             items: [
-              { endpoint: "classes", icon: "fa-door-open", label: "Classes" },
-              { endpoint: "subjects", icon: "fa-book", label: "Subjects" },
-              { endpoint: "exams", icon: "fa-file-alt", label: "Exams" },
+              {
+                endpoint: "admin-students",
+                icon: "fa-users",
+                label: "Students",
+              },
+              {
+                endpoint: "admin-medicals",
+                icon: "fa-heart",
+                label: "Medical Records",
+              },
+              {
+                endpoint: "admin-talent-pool",
+                icon: "fa-star",
+                label: "Talent Pool",
+              },
+              {
+                endpoint: "admin-visitor-mgmt",
+                icon: "fa-user-check",
+                label: "Visitor Management",
+              },
             ],
           });
           sections.push({
-            title: "Attendance",
+            title: "Facilities & Resources",
             items: [
               {
-                endpoint: "mark-attendance",
+                endpoint: "admin-facilities",
+                icon: "fa-building",
+                label: "Facility Management",
+              },
+              {
+                endpoint: "admin-photo-journals",
+                icon: "fa-images",
+                label: "Photo Journals",
+              },
+            ],
+          });
+          sections.push({
+            title: "Operations",
+            items: [
+              {
+                endpoint: "admin-attendance",
                 icon: "fa-calendar-check",
-                label: "Mark Attendance",
+                label: "Attendance",
               },
               {
-                endpoint: "view-attendance",
-                icon: "fa-eye",
-                label: "View Attendance",
+                endpoint: "admin-reports",
+                icon: "fa-chart-bar",
+                label: "Reports",
+              },
+              {
+                endpoint: "admin-clubs",
+                icon: "fa-users-circle",
+                label: "Clubs & Societies",
+              },
+              {
+                endpoint: "admin-revenues",
+                icon: "fa-money-bill-wave",
+                label: "Weekly Revenues",
               },
             ],
           });
@@ -1792,20 +1869,88 @@
               {
                 endpoint: "payments",
                 icon: "fa-wallet",
-                label: "Payments",
+                label: "All Payments",
               },
             ],
           });
-          renderAdminDashboard();
-        } else if (role === "staff" || role === "teacher") {
           sections.push({
-            title: "Academic",
+            title: "Authentication",
             items: [
-              { endpoint: "exams", icon: "fa-clipboard-check", label: "Exams" },
               {
-                endpoint: "add-exam",
-                icon: "fa-plus-circle",
-                label: "Add Exam",
+                endpoint: "register",
+                icon: "fa-user-plus",
+                label: "Register User",
+              },
+              { endpoint: "profile", icon: "fa-user", label: "My Profile" },
+              { endpoint: "logout", icon: "fa-sign-out-alt", label: "Logout" },
+            ],
+          });
+          renderAdminDashboard();
+        } else if (role === "teacher" || role === "staff") {
+          sections.push({
+            title: "Academic Management",
+            items: [
+              {
+                endpoint: "teacher-e-classroom",
+                icon: "fa-video",
+                label: "E-Classroom",
+              },
+              {
+                endpoint: "teacher-lesson-planner",
+                icon: "fa-calendar-day",
+                label: "Lesson Planner",
+              },
+              {
+                endpoint: "teacher-assignments",
+                icon: "fa-tasks",
+                label: "Assignments",
+              },
+              {
+                endpoint: "teacher-subjects",
+                icon: "fa-book",
+                label: "My Subjects",
+              },
+              { endpoint: "teacher-cbt", icon: "fa-laptop", label: "CBT" },
+              { endpoint: "exams", icon: "fa-file-alt", label: "Exams" },
+            ],
+          });
+          sections.push({
+            title: "Records & Reports",
+            items: [
+              {
+                endpoint: "teacher-timetable",
+                icon: "fa-clock",
+                label: "My Timetable",
+              },
+              {
+                endpoint: "teacher-secondary-report",
+                icon: "fa-chart-line",
+                label: "Secondary School Report",
+              },
+              {
+                endpoint: "teacher-behaviour-tracker",
+                icon: "fa-list-check",
+                label: "Behaviour Tracker",
+              },
+              {
+                endpoint: "teacher-pastoral",
+                icon: "fa-handshake",
+                label: "Pastoral Care",
+              },
+            ],
+          });
+          sections.push({
+            title: "Engagement",
+            items: [
+              {
+                endpoint: "teacher-hrm",
+                icon: "fa-users-cog",
+                label: "HRM Info",
+              },
+              {
+                endpoint: "teacher-feedback",
+                icon: "fa-comments",
+                label: "Feedback & Ratings",
               },
             ],
           });
@@ -1822,10 +1967,22 @@
             title: "Academic",
             items: [
               {
-                endpoint: "exams",
-                icon: "fa-clipboard-check",
-                label: "My Exams",
+                endpoint: "student-rate-teacher",
+                icon: "fa-star",
+                label: "Rate My Teacher",
               },
+              {
+                endpoint: "student-subjects",
+                icon: "fa-book",
+                label: "My Subjects",
+              },
+              {
+                endpoint: "student-scores",
+                icon: "fa-chart-line",
+                label: "My Scores",
+              },
+              { endpoint: "student-cbt", icon: "fa-laptop", label: "CBT" },
+              { endpoint: "exams", icon: "fa-file-alt", label: "My Exams" },
             ],
           });
           sections.push({
@@ -1838,27 +1995,67 @@
           renderStudentDashboard(user);
         } else if (role === "parent") {
           sections.push({
-            title: "Payments",
+            title: "Finance & Payments",
             items: [
               {
-                endpoint: "make-payment",
+                endpoint: "parent-wallet",
                 icon: "fa-wallet",
+                label: "My Wallet",
+              },
+              {
+                endpoint: "parent-fees",
+                icon: "fa-receipt",
+                label: "School Fees",
+              },
+              {
+                endpoint: "parent-bills",
+                icon: "fa-file-invoice",
+                label: "Bills & Invoices",
+              },
+              {
+                endpoint: "make-payment",
+                icon: "fa-credit-card",
                 label: "Make Payment",
               },
               {
                 endpoint: "payment-status",
-                icon: "fa-receipt",
+                icon: "fa-check-circle",
                 label: "Payment Status",
               },
             ],
           });
           sections.push({
-            title: "School",
+            title: "School Portal",
             items: [
               {
-                endpoint: "events",
-                icon: "fa-calendar-alt",
-                label: "School Events",
+                endpoint: "parent-store",
+                icon: "fa-shopping-cart",
+                label: "School Store",
+              },
+              {
+                endpoint: "parent-store-appointments",
+                icon: "fa-calendar-check",
+                label: "Store Appointments",
+              },
+              {
+                endpoint: "parent-feedback",
+                icon: "fa-comments",
+                label: "Send Feedback",
+              },
+              {
+                endpoint: "parent-pastoral",
+                icon: "fa-handshake",
+                label: "Pastoral Care",
+              },
+            ],
+          });
+          sections.push({
+            title: "Finance Summary",
+            items: [
+              {
+                endpoint: "parent-finance",
+                icon: "fa-chart-pie",
+                label: "Finance Dashboard",
               },
             ],
           });
@@ -1907,6 +2104,7 @@
             const endpoint = item.getAttribute("data-endpoint");
             const titles = {
               dashboard: "Dashboard Overview",
+              "news-feed": "News Feed & Birthdays",
               register: "Register User",
               profile: "My Profile",
               exams: "Exams",
@@ -1926,6 +2124,56 @@
               "fee-payments": "Fee Payments",
               "pending-fees": "Pending Fees",
               payments: "Payments",
+              // Admin endpoints
+              "admin-sms": "SMS/WhatsApp",
+              "admin-mailbox": "Mailbox",
+              "admin-news-feed": "News Feed Management",
+              "admin-e-classroom": "E-Classroom",
+              "admin-lesson-planner": "Lesson Planner",
+              "admin-assignments": "Assignments Management",
+              "admin-cbт": "CBT Management",
+              "admin-classes": "Classes Management",
+              "admin-subjects": "Subjects Management",
+              "admin-exams": "Exams Management",
+              "admin-hr": "HR Management",
+              "admin-teachers": "Teachers Management",
+              "admin-parents": "Parents Management",
+              "admin-students": "Students Management",
+              "admin-medicals": "Medical Records",
+              "admin-talent-pool": "Talent Pool",
+              "admin-visitor-mgmt": "Visitor Management",
+              "admin-facilities": "Facility Management",
+              "admin-photo-journals": "Photo Journals",
+              "admin-attendance": "Attendance Management",
+              "admin-reports": "Reports & Analytics",
+              "admin-clubs": "Clubs & Societies",
+              "admin-revenues": "Weekly Revenues",
+              // Teacher endpoints
+              "teacher-e-classroom": "E-Classroom",
+              "teacher-lesson-planner": "Lesson Planner",
+              "teacher-assignments": "My Assignments",
+              "teacher-subjects": "My Subjects",
+              "teacher-cbt": "CBT",
+              "teacher-timetable": "My Timetable",
+              "teacher-secondary-report": "Secondary School Report",
+              "teacher-behaviour-tracker": "Behaviour Tracker",
+              "teacher-pastoral": "Pastoral Care",
+              "teacher-hrm": "HRM Info",
+              "teacher-feedback": "Feedback & Ratings",
+              // Student endpoints
+              "student-rate-teacher": "Rate My Teacher",
+              "student-subjects": "My Subjects",
+              "student-scores": "My Scores",
+              "student-cbt": "CBT",
+              // Parent endpoints
+              "parent-wallet": "My Wallet",
+              "parent-fees": "School Fees",
+              "parent-bills": "Bills & Invoices",
+              "parent-store": "School Store",
+              "parent-store-appointments": "Store Appointments",
+              "parent-feedback": "Send Feedback",
+              "parent-pastoral": "Pastoral Care",
+              "parent-finance": "Finance Dashboard",
             };
             document.getElementById("pageTitle").textContent =
               titles[endpoint] || "Dashboard";
@@ -2115,6 +2363,165 @@
             renderError(err.message || String(err));
           }
         },
+        // New demo handlers for dashboard widgets
+        "class-distribution": async () => {
+          try {
+            const res = await apiRequest("/reports/class-distribution");
+            if (res && res.labels && res.counts) {
+              drawBarChart("classChart", res.labels, res.counts);
+              showAlert("loginAlert", "Class distribution loaded", "success");
+            } else {
+              renderError("No class distribution data available");
+            }
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        "store-catalog": async () => {
+          try {
+            const res = await apiRequest("/store/catalog");
+            renderStoreCatalog(res.items || []);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        "view-cart": async () => {
+          try {
+            const res = await apiRequest("/store/cart");
+            renderCart(res.items || []);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        "news-birthdays": async () => {
+          try {
+            const res = await apiRequest("/news/birthdays");
+            renderBirthdays(res.birthdays || []);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        // ADMIN endpoints
+        "news-feed": async () => {
+          try {
+            const res = await apiRequest("/news/birthdays");
+            renderNewsFeedWithBirthdays(res.birthdays || []);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        "admin-sms": () => renderAdminSMS(),
+        "admin-mailbox": () => renderAdminMailbox(),
+        "admin-news-feed": () => renderAdminNewsFeed(),
+        "admin-e-classroom": () => renderAdminEClassroom(),
+        "admin-lesson-planner": () => renderAdminLessonPlanner(),
+        "admin-assignments": () => renderAdminAssignments(),
+        "admin-cbт": () => renderAdminCBT(),
+        "admin-classes": async () => {
+          try {
+            const data = await apiRequest("/classes");
+            renderAdminClasses(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-subjects": async () => {
+          try {
+            const data = await apiRequest("/subjects");
+            renderAdminSubjects(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-exams": async () => {
+          try {
+            const data = await apiRequest("/exams");
+            renderAdminExams(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-hr": () => renderAdminHR(),
+        "admin-teachers": async () => {
+          try {
+            const data = await apiRequest("/teachers");
+            renderAdminTeachers(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-parents": () => renderAdminParents(),
+        "admin-students": async () => {
+          try {
+            const data = await apiRequest("/students");
+            renderAdminStudents(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-medicals": () => renderAdminMedicals(),
+        "admin-talent-pool": () => renderAdminTalentPool(),
+        "admin-visitor-mgmt": () => renderAdminVisitorMgmt(),
+        "admin-facilities": () => renderAdminFacilities(),
+        "admin-photo-journals": () => renderAdminPhotoJournals(),
+        "admin-attendance": async () => {
+          try {
+            const data = await apiRequest("/attendance");
+            renderAdminAttendance(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-reports": async () => {
+          try {
+            const data = await apiRequest("/reports/class-distribution");
+            renderAdminReports(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        "admin-clubs": () => renderAdminClubs(),
+        "admin-revenues": async () => {
+          try {
+            const data = await apiRequest("/payments");
+            renderAdminRevenues(data);
+          } catch (err) {
+            renderError(err.message);
+          }
+        },
+        // TEACHER endpoints
+        "teacher-e-classroom": () => renderTeacherEClassroom(),
+        "teacher-lesson-planner": () => renderTeacherLessonPlanner(),
+        "teacher-assignments": () => renderTeacherAssignments(),
+        "teacher-subjects": () => renderTeacherSubjects(),
+        "teacher-cbt": () => renderTeacherCBT(),
+        "teacher-timetable": () => renderTeacherTimetable(),
+        "teacher-secondary-report": () => renderTeacherSecondaryReport(),
+        "teacher-behaviour-tracker": () => renderTeacherBehaviourTracker(),
+        "teacher-pastoral": () => renderTeacherPastoral(),
+        "teacher-hrm": () => renderTeacherHRM(),
+        "teacher-feedback": () => renderTeacherFeedback(),
+        // STUDENT endpoints
+        "student-rate-teacher": () => renderStudentRateTeacher(),
+        "student-subjects": () => renderStudentSubjects(),
+        "student-scores": () => renderStudentScores(),
+        "student-cbt": () => renderStudentCBT(),
+        // PARENT endpoints
+        "parent-wallet": () => renderParentWallet(),
+        "parent-fees": () => renderParentFees(),
+        "parent-bills": () => renderParentBills(),
+        "parent-store": async () => {
+          try {
+            const res = await apiRequest("/store/catalog");
+            renderParentStore(res.items || []);
+          } catch (err) {
+            renderError(err.message || String(err));
+          }
+        },
+        "parent-store-appointments": () => renderParentStoreAppointments(),
+        "parent-feedback": () => renderParentFeedback(),
+        "parent-pastoral": () => renderParentPastoral(),
+        "parent-finance": () => renderParentFinance(),
       };
 
       // minimal dashboards and renderers reused
@@ -2130,13 +2537,24 @@
                 <div class="stat-card"><div class="icon" style="background:rgba(239,68,68,0.1);color:#ef4444"><i class="fas fa-exclamation-circle"></i></div><h3 id="pendingFees">-</h3><p>Pending Fees</p></div>
               </div>
               <div class="alert alert-info mt-4"><i class="fas fa-info-circle"></i> Welcome to the School ERP Admin Dashboard. You have full access to all features.</div>
+
+              <div class="card mt-4 p-3">
+                <h6>Insights</h6>
+                <div style="width:100%;max-width:720px;"><canvas id="classChart" width="720" height="200"></canvas></div>
+                <div class="d-flex gap-2 mt-2">
+                  <button class="btn btn-sm btn-outline-primary" onclick="endpointHandlers['class-distribution']()">Refresh Class Distribution</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="endpointHandlers['news-birthdays']()">Upcoming Birthdays</button>
+                  <button class="btn btn-sm btn-outline-success" onclick="endpointHandlers['store-catalog']()">Open Store</button>
+                </div>
+              </div>
             </div>
-            <div style="width:260px; margin-left:20px">
+            <div style="width:300px; margin-left:20px">
               <div class="card p-3 mb-3">
                 <h6 class="mb-3">Quick Actions</h6>
                 <button class="btn btn-sm btn-primary w-100 mb-2" onclick="showAddFeeModal()"><i class="fas fa-money-bill-wave me-2"></i> Add Fee Structure</button>
                 <button class="btn btn-sm btn-secondary w-100 mb-2" onclick="showAddEventModal()"><i class="fas fa-calendar-plus me-2"></i> Add Event</button>
-                <button class="btn btn-sm btn-outline-primary w-100" onclick="endpointHandlers['fee-structures']()"><i class="fas fa-list me-2"></i> View Fee Structures</button>
+                <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="endpointHandlers['fee-structures']()"><i class="fas fa-list me-2"></i> View Fee Structures</button>
+                <button class="btn btn-sm btn-outline-success w-100" onclick="endpointHandlers['view-cart']()"><i class="fas fa-shopping-cart me-2"></i> View Store Cart</button>
               </div>
             </div>
           </div>
@@ -2190,6 +2608,16 @@
                   <h5 class="card-title">School Events</h5>
                   <p class="card-text">View upcoming school events</p>
                   <button class="btn btn-warning btn-sm" onclick="endpointHandlers['events']()">View Events</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card text-center h-100">
+                <div class="card-body">
+                  <div class="icon mb-3" style="background:rgba(99,102,241,0.1);color:#6366f1;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;"><i class="fas fa-store fa-2x"></i></div>
+                  <h5 class="card-title">School Store</h5>
+                  <p class="card-text">Buy school merch and books</p>
+                  <button class="btn btn-primary btn-sm" onclick="endpointHandlers['store-catalog']()">Open Store</button>
                 </div>
               </div>
             </div>
@@ -2256,6 +2684,127 @@
         } catch (err) {
           console.error("stats error", err);
         }
+      }
+
+      // Simple canvas bar chart renderer (no external libs)
+      function drawBarChart(canvasId, labels, data) {
+        const c = document.getElementById(canvasId);
+        if (!c) return;
+        const ctx = c.getContext("2d");
+        const width = c.width;
+        const height = c.height;
+        ctx.clearRect(0, 0, width, height);
+        if (!labels || !data || labels.length === 0) {
+          ctx.fillStyle = "#666";
+          ctx.fillText("No data", 10, 20);
+          return;
+        }
+        const max = Math.max(...data, 1);
+        const barWidth = Math.floor((width - 40) / data.length);
+        labels.forEach((lbl, i) => {
+          const val = data[i] || 0;
+          const h = Math.round((val / max) * (height - 40));
+          const x = 20 + i * barWidth;
+          const y = height - 20 - h;
+          ctx.fillStyle = "#4f46e5";
+          ctx.fillRect(x + 6, y, barWidth - 12, h);
+          ctx.fillStyle = "#111827";
+          ctx.font = "12px sans-serif";
+          ctx.fillText(lbl, x + 6, height - 4);
+          ctx.fillText(String(val), x + 6, y - 6);
+        });
+      }
+
+      // Store / Cart UI renderers
+      function renderStoreCatalog(items) {
+        document.getElementById("pageTitle").textContent = "School Store";
+        const html = `<div class="row">${items
+          .map(
+            (it) =>
+              `<div class="col-md-4 mb-3"><div class="card"><img src="${
+                it.image_url || "/static/fair-educare/img/placeholder.png"
+              }" class="card-img-top" style="height:160px;object-fit:cover"/><div class="card-body text-center"><h6>${
+                it.title
+              }</h6><p class="mb-1">NGN ${
+                it.price
+              }</p><button class="btn btn-sm btn-primary" onclick="addToCart('${
+                it.id
+              }')">Add to cart</button></div></div></div>`
+          )
+          .join("")}</div>`;
+        document.getElementById("contentArea").innerHTML =
+          html +
+          `<div class="mt-3"><button class="btn btn-success" onclick="endpointHandlers['view-cart']()">View Cart</button></div>`;
+      }
+
+      async function addToCart(itemId) {
+        try {
+          await apiRequest("/store/cart", {
+            method: "POST",
+            body: JSON.stringify({ item_id: itemId, qty: 1 }),
+          });
+          showAlert("loginAlert", "Item added to cart", "success");
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      function renderCart(items) {
+        document.getElementById("pageTitle").textContent = "My Store Cart";
+        if (!items || items.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">Your cart is empty.</div>`;
+          return;
+        }
+        const rows = items
+          .map(
+            (it) =>
+              `<tr><td>${it.title}</td><td>${it.qty}</td><td>NGN ${
+                it.price
+              }</td><td>NGN ${it.qty * it.price}</td></tr>`
+          )
+          .join("");
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3>My Cart</h3><div class="table-responsive"><table class="table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table></div><div class="text-end"><button class="btn btn-primary" onclick="checkoutCart()">Checkout</button></div>`;
+      }
+
+      async function checkoutCart() {
+        try {
+          const res = await apiRequest("/store/checkout", { method: "POST" });
+          showAlert(
+            "loginAlert",
+            `Checkout complete. Total: NGN ${res.total}`,
+            "success"
+          );
+          endpointHandlers.dashboard();
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      function renderBirthdays(list) {
+        document.getElementById("pageTitle").textContent = "Upcoming Birthdays";
+        if (!list || list.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No birthdays in the next 30 days.</div>`;
+          return;
+        }
+        const items = list
+          .map(
+            (b) =>
+              `<li class="list-group-item"><strong>${
+                b.name
+              }</strong> <span class="text-muted">(${
+                b.type
+              })</span> — ${new Date(b.date).toLocaleDateString()}</li>`
+          )
+          .join("");
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3>Upcoming Birthdays</h3><ul class="list-group mt-3">${items}</ul>`;
       }
 
       function renderError(msg) {
@@ -3715,6 +4264,1339 @@
           });
       }
 
+      // Chart.js based bar chart helper and Store UI helpers
+      let _classChartInstance = null;
+      function drawBarChart(canvasId, labels, data) {
+        // If Chart.js is available, use it; otherwise fallback to simple text
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        if (typeof Chart === "undefined") {
+          const ctx = canvas.getContext("2d");
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#666";
+          ctx.fillText("Chart.js not loaded", 10, 20);
+          return;
+        }
+        const ctx = canvas.getContext("2d");
+        if (_classChartInstance) {
+          try {
+            _classChartInstance.destroy();
+          } catch (e) {}
+          _classChartInstance = null;
+        }
+        _classChartInstance = new Chart(ctx, {
+          type: "bar",
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: "Students",
+                data: data,
+                backgroundColor: labels.map(() => "rgba(79,70,229,0.8)"),
+                borderColor: labels.map(() => "rgba(79,70,229,1)"),
+                borderWidth: 1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: true, ticks: { precision: 0 } },
+            },
+            plugins: { legend: { display: false } },
+          },
+        });
+      }
+
+      function renderStoreCatalog(items) {
+        document.getElementById("pageTitle").textContent = "School Store";
+        const html = `<div class="row">${items
+          .map(
+            (it) =>
+              `<div class="col-md-4 mb-3"><div class="card"><img src="${
+                it.image_url || "/static/fair-educare/img/placeholder.png"
+              }" class="card-img-top" style="height:160px;object-fit:cover"/><div class="card-body text-center"><h6>${
+                it.title
+              }</h6><p class="mb-1">NGN ${
+                it.price
+              }</p><button class="btn btn-sm btn-primary" onclick="addToCart('${
+                it.id
+              }')">Add to cart</button></div></div></div>`
+          )
+          .join("")}</div>`;
+        document.getElementById("contentArea").innerHTML =
+          html +
+          `<div class="mt-3"><button class="btn btn-success" onclick="endpointHandlers['view-cart']()">View Cart</button></div>`;
+      }
+
+      async function addToCart(itemId) {
+        try {
+          await apiRequest("/store/cart", {
+            method: "POST",
+            body: JSON.stringify({ item_id: itemId, qty: 1 }),
+          });
+          showAlert("loginAlert", "Item added to cart", "success");
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      function renderCart(items) {
+        document.getElementById("pageTitle").textContent = "My Store Cart";
+        if (!items || items.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">Your cart is empty.</div>`;
+          return;
+        }
+        const rows = items
+          .map(
+            (it) =>
+              `<tr><td>${it.title}</td><td>${it.qty}</td><td>NGN ${
+                it.price
+              }</td><td>NGN ${it.qty * it.price}</td></tr>`
+          )
+          .join("");
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3>My Cart</h3><div class="table-responsive"><table class="table"><thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead><tbody>${rows}</tbody></table></div><div class="text-end"><button class="btn btn-primary" onclick="checkoutCart()">Checkout</button></div>`;
+      }
+
+      async function checkoutCart() {
+        try {
+          const res = await apiRequest("/store/checkout", { method: "POST" });
+          showAlert(
+            "loginAlert",
+            `Checkout complete. Total: NGN ${res.total}`,
+            "success"
+          );
+          endpointHandlers.dashboard();
+        } catch (err) {
+          showAlert("loginAlert", err.message || String(err), "danger");
+        }
+      }
+
+      function renderBirthdays(list) {
+        document.getElementById("pageTitle").textContent = "Upcoming Birthdays";
+        if (!list || list.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No birthdays in the next 30 days.</div>`;
+          return;
+        }
+        const items = list
+          .map(
+            (b) =>
+              `<li class="list-group-item"><strong>${
+                b.name
+              }</strong> <span class="text-muted">(${
+                b.type
+              })</span> — ${new Date(b.date).toLocaleDateString()}</li>`
+          )
+          .join("");
+        document.getElementById(
+          "contentArea"
+        ).innerHTML = `<h3>Upcoming Birthdays</h3><ul class="list-group mt-3">${items}</ul>`;
+      }
+
+      // News Feed with Birthdays renderer
+      function renderNewsFeedWithBirthdays(birthdays) {
+        document.getElementById("pageTitle").textContent =
+          "News Feed & Birthdays";
+        const birthdaysList =
+          birthdays && birthdays.length > 0
+            ? birthdays
+                .map(
+                  (b) =>
+                    `<div class="card mb-2"><div class="card-body"><i class="fas fa-birthday-cake text-warning"></i> <strong>${
+                      b.name
+                    }</strong>'s birthday on ${new Date(
+                      b.date
+                    ).toLocaleDateString()}</div></div>`
+                )
+                .join("")
+            : '<div class="alert alert-info">No upcoming birthdays.</div>';
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-newspaper"></i> News Feed</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-8">
+              <div class="card mb-3">
+                <div class="card-header bg-primary text-white"><i class="fas fa-megaphone"></i> Announcements</div>
+                <div class="card-body">
+                  <p>No announcements at the moment.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card">
+                <div class="card-header bg-warning text-dark"><i class="fas fa-birthday-cake"></i> Upcoming Birthdays</div>
+                <div class="card-body" style="max-height:400px;overflow-y:auto;">
+                  ${birthdaysList}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ADMIN Renderers
+      function renderAdminSMS() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-sms"></i> SMS/WhatsApp Management</h3>
+          <hr>
+          <div class="card">
+            <div class="card-body">
+              <form>
+                <div class="mb-3">
+                  <label class="form-label">Recipient Group</label>
+                  <select class="form-select">
+                    <option>All Students</option>
+                    <option>All Parents</option>
+                    <option>All Teachers</option>
+                    <option>Class-specific</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Message</label>
+                  <textarea class="form-control" rows="4" placeholder="Type your message..."></textarea>
+                </div>
+                <button type="button" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send SMS</button>
+                <button type="button" class="btn btn-success ms-2"><i class="fab fa-whatsapp"></i> Send WhatsApp</button>
+              </form>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminMailbox() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-envelope"></i> Mailbox</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-inbox"></i> You have 0 unread messages.</div>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>From</th>
+                    <th>Subject</th>
+                    <th>Date</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td colspan="4" class="text-center text-muted py-3">No messages</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminNewsFeed() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-newspaper"></i> News Feed Management</h3>
+          <hr>
+          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Post News</button>
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              <i class="fas fa-newspaper fa-3x mb-3"></i>
+              <p>No news posts yet.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminEClassroom() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-video"></i> E-Classroom Management</h3>
+          <hr>
+          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Class</button>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="card-title">Class 1A Mathematics</h6>
+                  <p class="card-text text-muted small">Active sessions: 3</p>
+                  <button class="btn btn-sm btn-outline-primary">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminLessonPlanner() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-day"></i> Lesson Planner</h3>
+          <hr>
+          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Lesson</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Date</th><th>Class</th><th>Subject</th><th>Topic</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="5" class="text-center text-muted py-3">No lessons planned</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminAssignments() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-tasks"></i> Assignments Management</h3>
+          <hr>
+          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Assignment</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Class</th><th>Subject</th><th>Title</th><th>Due Date</th><th>Submissions</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="5" class="text-center text-muted py-3">No assignments</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminCBT() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-laptop"></i> CBT (Computer Based Test)</h3>
+          <hr>
+          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create CBT</button>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-info text-white">Active Tests</div>
+                <div class="card-body">
+                  <p class="text-muted">No active CBT tests at the moment.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-success text-white">Completed Tests</div>
+                <div class="card-body">
+                  <p class="text-muted">No completed tests.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminClasses(data) {
+        document.getElementById("pageTitle").textContent = "Classes Management";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No classes found.</div>`;
+          return;
+        }
+        const html = data
+          .map(
+            (c) =>
+              `<tr><td>${c.name || "N/A"}</td><td>${
+                c.form_name || "N/A"
+              }</td><td>${c.class_teacher || "N/A"}</td></tr>`
+          )
+          .join("");
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-door-open"></i> Classes</h3>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Class</button>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light"><tr><th>Name</th><th>Form</th><th>Teacher</th></tr></thead>
+              <tbody>${html}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAdminSubjects(data) {
+        document.getElementById("pageTitle").textContent =
+          "Subjects Management";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No subjects found.</div>`;
+          return;
+        }
+        const html = data
+          .map(
+            (s) =>
+              `<tr><td>${s.name || "N/A"}</td><td>${s.code || "N/A"}</td></tr>`
+          )
+          .join("");
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-book"></i> Subjects</h3>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Subject</button>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light"><tr><th>Name</th><th>Code</th></tr></thead>
+              <tbody>${html}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAdminExams(data) {
+        document.getElementById("pageTitle").textContent = "Exams Management";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No exams found.</div>`;
+          return;
+        }
+        const html = data
+          .map(
+            (e) =>
+              `<tr><td>${e.name || "N/A"}</td><td>${
+                e.date ? new Date(e.date).toLocaleDateString() : "N/A"
+              }</td><td>${e.total_marks || 0}</td></tr>`
+          )
+          .join("");
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-file-alt"></i> Exams</h3>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Exam</button>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light"><tr><th>Name</th><th>Date</th><th>Total Marks</th></tr></thead>
+              <tbody>${html}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAdminHR() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-users-cog"></i> HR Management</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-users fa-2x text-primary mb-3"></i>
+                  <h6>Total Staff</h6>
+                  <p class="h4">-</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-calendar-check fa-2x text-success mb-3"></i>
+                  <h6>On Leave</h6>
+                  <p class="h4">-</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-check-circle fa-2x text-info mb-3"></i>
+                  <h6>Present</h6>
+                  <p class="h4">-</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-file-alt fa-2x text-warning mb-3"></i>
+                  <h6>Pending Tasks</h6>
+                  <p class="h4">-</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminTeachers(data) {
+        document.getElementById("pageTitle").textContent =
+          "Teachers Management";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No teachers found.</div>`;
+          return;
+        }
+        const html = data
+          .map(
+            (t) =>
+              `<tr><td>${t.full_name || "N/A"}</td><td>${
+                t.email || "N/A"
+              }</td><td><span class="badge bg-primary">${
+                t.department || "N/A"
+              }</span></td></tr>`
+          )
+          .join("");
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-chalkboard-teacher"></i> Teachers</h3>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Teacher</button>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Department</th></tr></thead>
+              <tbody>${html}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAdminParents() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-tie"></i> Parents Management</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Parent</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Name</th><th>Email</th><th>Phone</th><th>Children</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No parents registered</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminStudents(data) {
+        document.getElementById("pageTitle").textContent =
+          "Students Management";
+        if (!data || data.length === 0) {
+          document.getElementById(
+            "contentArea"
+          ).innerHTML = `<div class="alert alert-info">No students found.</div>`;
+          return;
+        }
+        const html = data
+          .map(
+            (s) =>
+              `<tr><td>${s.full_name || "N/A"}</td><td>${
+                s.registration_number || "N/A"
+              }</td><td>${s.class_assigned || "N/A"}</td></tr>`
+          )
+          .join("");
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-users"></i> Students</h3>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Student</button>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light"><tr><th>Name</th><th>Reg. No</th><th>Class</th></tr></thead>
+              <tbody>${html}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderAdminMedicals() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-heart"></i> Medical Records</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Medical Record</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Student</th><th>Condition</th><th>Date</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No medical records</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminTalentPool() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-star"></i> Talent Pool</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <i class="fas fa-music fa-2x text-primary mb-2"></i>
+                  <h6>Music Talents</h6>
+                  <p class="text-muted">0 Students</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <i class="fas fa-futbol fa-2x text-success mb-2"></i>
+                  <h6>Sports Talents</h6>
+                  <p class="text-muted">0 Students</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <i class="fas fa-palette fa-2x text-warning mb-2"></i>
+                  <h6>Arts Talents</h6>
+                  <p class="text-muted">0 Students</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <i class="fas fa-robot fa-2x text-info mb-2"></i>
+                  <h6>STEM Talents</h6>
+                  <p class="text-muted">0 Students</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminVisitorMgmt() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user-check"></i> Visitor Management</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Register Visitor</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Name</th><th>Purpose</th><th>Check-in</th><th>Check-out</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="5" class="text-center text-muted py-3">No visitors logged</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminFacilities() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-building"></i> Facility Management</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Facility</button>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-header bg-primary text-white">Classrooms</div>
+                <div class="card-body text-center">
+                  <h4 class="text-primary">-</h4>
+                  <small class="text-muted">Total</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-header bg-success text-white">Labs</div>
+                <div class="card-body text-center">
+                  <h4 class="text-success">-</h4>
+                  <small class="text-muted">Total</small>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-header bg-warning text-dark">Sports Grounds</div>
+                <div class="card-body text-center">
+                  <h4 class="text-warning">-</h4>
+                  <small class="text-muted">Total</small>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminPhotoJournals() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-images"></i> Photo Journals</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Upload Album</button>
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              <i class="fas fa-image fa-3x mb-3"></i>
+              <p>No photo albums created yet.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminAttendance(data) {
+        document.getElementById("pageTitle").textContent =
+          "Attendance Management";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-check"></i> Attendance Management</h3>
+          <hr>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <label class="form-label">Select Class</label>
+              <select class="form-select"><option>All Classes</option></select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Select Date</label>
+              <input type="date" class="form-control">
+            </div>
+            <div class="col-md-4">
+              <label>&nbsp;</label>
+              <button class="btn btn-primary w-100"><i class="fas fa-search"></i> Search</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Student</th><th>Present</th><th>Absent</th><th>Late</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">Select filters to view attendance</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminReports(data) {
+        document.getElementById("pageTitle").textContent =
+          "Reports & Analytics";
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-chart-bar"></i> Reports & Analytics</h3>
+          <hr>
+          <div class="row mb-3">
+            <div class="col-md-4">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-chart-line fa-2x text-primary mb-3"></i>
+                  <h6>Student Performance</h6>
+                  <button class="btn btn-sm btn-outline-primary">View Report</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-graduation-cap fa-2x text-success mb-3"></i>
+                  <h6>Class Distribution</h6>
+                  <button class="btn btn-sm btn-outline-success" onclick="endpointHandlers['class-distribution']()">View Chart</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="card text-center">
+                <div class="card-body">
+                  <i class="fas fa-money-bill-wave fa-2x text-warning mb-3"></i>
+                  <h6>Finance Reports</h6>
+                  <button class="btn btn-sm btn-outline-warning">View Report</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminClubs() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-users-circle"></i> Clubs & Societies</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Create Club</button>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="card-title">Debate Club</h6>
+                  <p class="card-text text-muted small">Members: 15</p>
+                  <button class="btn btn-sm btn-outline-primary">Manage</button>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="card-title">Science Club</h6>
+                  <p class="card-text text-muted small">Members: 22</p>
+                  <button class="btn btn-sm btn-outline-primary">Manage</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderAdminRevenues(data) {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-money-bill-wave"></i> Weekly Revenues</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="text-muted">This Week</h6>
+                  <h3 class="text-primary">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="text-muted">This Month</h6>
+                  <h3 class="text-success">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="text-muted">This Year</h6>
+                  <h3 class="text-info">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body">
+                  <h6 class="text-muted">Outstanding</h6>
+                  <h3 class="text-warning">₦-</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // TEACHER Renderers
+      function renderTeacherEClassroom() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-video"></i> E-Classroom</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-info-circle"></i> E-classroom sessions will appear here.</div>
+          <button class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Start Session</button>
+        `;
+      }
+
+      function renderTeacherLessonPlanner() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-day"></i> Lesson Planner</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Create Lesson</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Date</th><th>Class</th><th>Subject</th><th>Topic</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No lessons planned</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherAssignments() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-tasks"></i> My Assignments</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Create Assignment</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Class</th><th>Title</th><th>Due Date</th><th>Submissions</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No assignments</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherSubjects() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-book"></i> My Subjects</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <div class="card">
+                <div class="card-header bg-primary text-white">Subject</div>
+                <div class="card-body">
+                  <h6>English Language</h6>
+                  <p class="text-muted small">Classes: 1A, 1B, 1C</p>
+                  <button class="btn btn-sm btn-outline-primary">View Students</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherCBT() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-laptop"></i> CBT</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Create CBT</button>
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              <i class="fas fa-laptop fa-3x mb-3"></i>
+              <p>No CBT created yet.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherTimetable() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-clock"></i> My Timetable</h3>
+          <hr>
+          <div class="table-responsive">
+            <table class="table table-bordered">
+              <thead class="table-light">
+                <tr><th>Time</th><th>Monday</th><th>Tuesday</th><th>Wednesday</th><th>Thursday</th><th>Friday</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>9:00-10:00</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>10:00-11:00</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+                <tr><td>11:00-12:00</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td></tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderTeacherSecondaryReport() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-chart-line"></i> Secondary School Report</h3>
+          <hr>
+          <form class="card p-3 mb-3">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Select Class</label>
+                <select class="form-select"><option>Class 1A</option></select>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Term</label>
+                <select class="form-select"><option>Term 1</option><option>Term 2</option><option>Term 3</option></select>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary">Generate Report</button>
+          </form>
+        `;
+      }
+
+      function renderTeacherBehaviourTracker() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-list-check"></i> Behaviour Tracker</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Log Behaviour</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Student</th><th>Date</th><th>Behaviour</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No records</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherPastoral() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-handshake"></i> Pastoral Care</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-heart"></i> Log pastoral care interactions with your students.</div>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Entry</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Student</th><th>Date</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="3" class="text-center text-muted py-3">No entries yet</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherHRM() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-users-cog"></i> HRM Information</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-primary text-white">Employment Info</div>
+                <div class="card-body">
+                  <p><strong>Department:</strong> -</p>
+                  <p><strong>Employment Date:</strong> -</p>
+                  <p><strong>Position:</strong> -</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-success text-white">Leave Balance</div>
+                <div class="card-body">
+                  <p><strong>Annual Leave:</strong> - days</p>
+                  <p><strong>Sick Leave:</strong> - days</p>
+                  <p><strong>Used Leave:</strong> - days</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTeacherFeedback() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-comments"></i> Feedback & Ratings</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-star"></i> View feedback from students and parents.</div>
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              <i class="fas fa-comments fa-3x mb-3"></i>
+              <p>No feedback received yet.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      // STUDENT Renderers
+      function renderStudentRateTeacher() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-star"></i> Rate My Teacher</h3>
+          <hr>
+          <form class="card p-3">
+            <div class="mb-3">
+              <label class="form-label">Select Teacher</label>
+              <select class="form-select"><option>Select a teacher...</option></select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Rating (1-5 stars)</label>
+              <div class="star-rating">
+                <i class="fas fa-star" data-rating="1"></i>
+                <i class="fas fa-star" data-rating="2"></i>
+                <i class="fas fa-star" data-rating="3"></i>
+                <i class="fas fa-star" data-rating="4"></i>
+                <i class="fas fa-star" data-rating="5"></i>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Comments</label>
+              <textarea class="form-control" rows="3" placeholder="Share your thoughts..."></textarea>
+            </div>
+            <button type="button" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Rating</button>
+          </form>
+        `;
+      }
+
+      function renderStudentSubjects() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-book"></i> My Subjects</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-primary text-white">Mathematics</div>
+                <div class="card-body">
+                  <p><strong>Teacher:</strong> -</p>
+                  <p><strong>Last Assignment:</strong> -</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-success text-white">English Language</div>
+                <div class="card-body">
+                  <p><strong>Teacher:</strong> -</p>
+                  <p><strong>Last Assignment:</strong> -</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderStudentScores() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-chart-line"></i> My Scores</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-info-circle"></i> View your scores and grades.</div>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light">
+                <tr><th>Subject</th><th>Exam</th><th>Score</th><th>Grade</th></tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" class="text-center text-muted py-3">No scores yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderStudentCBT() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-laptop"></i> CBT (Computer Based Tests)</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-primary text-white">Available Tests</div>
+                <div class="card-body text-center text-muted py-3">
+                  <p>No tests available at the moment.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card">
+                <div class="card-header bg-success text-white">Completed Tests</div>
+                <div class="card-body text-center text-muted py-3">
+                  <p>No completed tests.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // PARENT Renderers
+      function renderParentWallet() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-wallet"></i> My Wallet</h3>
+          <hr>
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <h6 class="text-muted">Wallet Balance</h6>
+                  <h2 class="text-success">₦-</h2>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <div class="card text-center">
+                <div class="card-body">
+                  <h6 class="text-muted">Total Spent</h6>
+                  <h2 class="text-danger">₦-</h2>
+                </div>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-primary"><i class="fas fa-plus"></i> Add Funds</button>
+        `;
+      }
+
+      function renderParentFees() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-receipt"></i> School Fees</h3>
+          <hr>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead class="table-light">
+                <tr><th>Child</th><th>Term</th><th>Amount</th><th>Status</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="5" class="text-center text-muted py-3">No fees found</td></tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      function renderParentBills() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-file-invoice"></i> Bills & Invoices</h3>
+          <hr>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Description</th><th>Amount</th><th>Date</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No bills</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderParentStore(items) {
+        document.getElementById("pageTitle").textContent = "School Store";
+        let storeHTML = `
+          <h3><i class="fas fa-shopping-cart"></i> School Store</h3>
+          <hr>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <input type="text" class="form-control" placeholder="Search store items...">
+            </div>
+            <div class="col-md-6 text-end">
+              <button class="btn btn-outline-primary" onclick="endpointHandlers['parent-store']()"><i class="fas fa-refresh"></i> Refresh</button>
+              <button class="btn btn-success"><i class="fas fa-shopping-cart"></i> View Cart</button>
+            </div>
+          </div>
+          <div class="row">
+        `;
+
+        if (!items || items.length === 0) {
+          storeHTML +=
+            '<div class="col-12"><div class="alert alert-info">No items available in the store.</div></div>';
+        } else {
+          items.forEach((item) => {
+            storeHTML += `
+              <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                  <div class="card-body">
+                    <h6 class="card-title">${item.name || "Item"}</h6>
+                    <p class="card-text text-muted">${
+                      item.description || "No description"
+                    }</p>
+                    <div class="d-flex justify-content-between align-items-center mt-3">
+                      <span class="h5 mb-0">₦${item.price || 0}</span>
+                      <button class="btn btn-sm btn-primary" onclick="addToCart(${
+                        item.id
+                      })"><i class="fas fa-cart-plus"></i></button>
+                    </div>
+                    <small class="text-muted d-block mt-2">Stock: ${
+                      item.stock || 0
+                    }</small>
+                  </div>
+                </div>
+              </div>
+            `;
+          });
+        }
+        storeHTML += "</div>";
+        document.getElementById("contentArea").innerHTML = storeHTML;
+      }
+
+      function renderParentStoreAppointments() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-calendar-check"></i> Store Appointments</h3>
+          <hr>
+          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Book Appointment</button>
+          <div class="card">
+            <div class="table-responsive">
+              <table class="table table-striped mb-0">
+                <thead class="table-light">
+                  <tr><th>Date</th><th>Time</th><th>Purpose</th><th>Status</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td colspan="4" class="text-center text-muted py-3">No appointments booked</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderParentFeedback() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-comments"></i> Send Feedback</h3>
+          <hr>
+          <form class="card p-3">
+            <div class="mb-3">
+              <label class="form-label">Feedback Type</label>
+              <select class="form-select">
+                <option>General Feedback</option>
+                <option>Complaint</option>
+                <option>Suggestion</option>
+                <option>Compliment</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Message</label>
+              <textarea class="form-control" rows="4" placeholder="Share your feedback..."></textarea>
+            </div>
+            <button type="button" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Feedback</button>
+          </form>
+        `;
+      }
+
+      function renderParentPastoral() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-handshake"></i> Pastoral Care</h3>
+          <hr>
+          <div class="alert alert-info"><i class="fas fa-info-circle"></i> Pastoral care updates from the school will appear here.</div>
+          <div class="card">
+            <div class="card-body text-center text-muted py-5">
+              <i class="fas fa-handshake fa-3x mb-3"></i>
+              <p>No pastoral updates yet.</p>
+            </div>
+          </div>
+        `;
+      }
+
+      function renderParentFinance() {
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-chart-pie"></i> Finance Dashboard</h3>
+          <hr>
+          <div class="row mb-3">
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Total Due</h6>
+                  <h3 class="text-danger">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Total Paid</h6>
+                  <h3 class="text-success">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Outstanding</h6>
+                  <h3 class="text-warning">₦-</h3>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-3 mb-3">
+              <div class="card">
+                <div class="card-body text-center">
+                  <h6 class="text-muted">Balance</h6>
+                  <h3 class="text-info">₦-</h3>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       function renderError(message) {
         document.getElementById("contentArea").innerHTML = `
                 <div class="alert alert-danger">
@@ -3737,5 +5619,6 @@
 
       showScreen("loginScreen");
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </body>
 </html>

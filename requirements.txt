@@ -65,3 +65,6 @@ urllib3==2.5.0
 uvicorn==0.37.0
 watchfiles==1.1.0
 websockets==15.0.1
+openpyxl==3.1.2
+reportlab==3.6.12
+alembic==1.11.1

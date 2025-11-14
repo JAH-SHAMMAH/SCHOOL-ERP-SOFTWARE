@@ -18,7 +18,7 @@ router = APIRouter(prefix="/payments", tags=["Payments"])
 
 # ✅ Get from environment variable or .env file
 PAYSTACK_SECRET_KEY = os.getenv(
-    "PAYSTACK_SECRET_KEY", "sk_test_7c0d95a2069f9c0d4a0eab3c8ac14c93c45ebde4"
+    "PAYSTACK_SECRET_KEY", "sk_test_9dc53817a2920db10cb7978b49060dee9dd009a5"
 )
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -83,6 +83,45 @@ def get_current_user(
     return user
 
 
+def _role_value(user_obj):
+    """Return a normalized lowercase role string for a user object.
+
+    Works whether the stored role is a Python Enum (with `.value`) or a plain
+    string. Always returns a lowercase string (or empty string on failure).
+    """
+    try:
+        r = getattr(user_obj, "role", "")
+        # If it's an enum with a .value attribute, use that
+        if hasattr(r, "value"):
+            return str(r.value).lower()
+        return str(r).lower()
+    except Exception:
+        return ""
+
+
+def _parse_iso_datetime(s):
+    """Parse a few common ISO datetime formats into a Python datetime.
+
+    Returns a datetime instance or None on failure. Handles the common "Z"
+    timezone marker by converting to an offset that datetime.fromisoformat
+    accepts.
+    """
+    if not s:
+        return None
+    try:
+        if isinstance(s, str):
+            # Convert trailing Z to +00:00 so fromisoformat can parse it
+            if s.endswith("Z"):
+                s = s[:-1] + "+00:00"
+            return datetime.fromisoformat(s)
+        # if it's already a datetime object, just return it
+        if isinstance(s, datetime):
+            return s
+    except Exception:
+        return None
+    return None
+
+
 def _ensure_paystack_key():
     """Ensure a real Paystack secret key is configured.
 
@@ -114,7 +153,7 @@ async def create_virtual_account(
 ):
     """Create a dynamic virtual account for a user via Paystack (Parents only)"""
     # Only parents are allowed to create virtual accounts/payments
-    if getattr(current_user, "role", "").lower() != "parent":
+    if _role_value(current_user) != "parent":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only parents can create virtual accounts",
@@ -203,7 +242,7 @@ def initialize_payment(
 
     Returns the Paystack authorization URL which the frontend can open/redirect to.
     """
-    if getattr(current_user, "role", "").lower() != "parent":
+    if _role_value(current_user) != "parent":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only parents can initialize payments",
@@ -298,7 +337,7 @@ def verify_payment(
     This verifies the transaction status with Paystack. In production, you should
     also validate that the referenced transaction belongs to the current user.
     """
-    role = getattr(current_user, "role", "").lower()
+    role = _role_value(current_user)
     if role not in ("parent", "admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -387,12 +426,16 @@ def verify_payment(
                         .first()
                     )
             if target:
-                target.status = "paid"
-                target.transaction_date = (
-                    pay_data.get("paid_at")
-                    or pay_data.get("transaction_date")
-                    or target.transaction_date
+                print(
+                    f"[payments.verify] Found target payment id={getattr(target,'id',None)} reference={getattr(target,'reference',None)} status_before={getattr(target,'status',None)}"
                 )
+                target.status = "paid"
+                # Parse and set transaction_date if Paystack returned one
+                parsed_dt = _parse_iso_datetime(
+                    pay_data.get("paid_at") or pay_data.get("transaction_date")
+                )
+                if parsed_dt:
+                    target.transaction_date = parsed_dt
                 target.payment_method = (
                     pay_data.get("authorization", {}).get("channel")
                     if pay_data.get("authorization")
@@ -405,7 +448,11 @@ def verify_payment(
                     setattr(target, "transaction_id", str(pay_data.get("id")))
                 db.add(target)
                 db.commit()
-        except Exception:
+                print(
+                    f"[payments.verify] Updated target status to {getattr(target,'status',None)} and committed"
+                )
+        except Exception as e:
+            print(f"[payments.verify] Exception updating payment: {e}")
             try:
                 db.rollback()
             except Exception:
@@ -480,7 +527,7 @@ def list_payments(
       - reference (exact)
       - parent_id (admin only)
     """
-    role = getattr(current_user, "role", "").lower()
+    role = _role_value(current_user)
 
     query = db.query(Payment)
 
@@ -569,7 +616,7 @@ def get_payment_detail(
     if not p:
         raise HTTPException(status_code=404, detail="Payment not found")
 
-    role = getattr(current_user, "role", "").lower()
+    role = _role_value(current_user)
     if role != "admin" and str(p.parent_id) != str(getattr(current_user, "id", "")):
         raise HTTPException(
             status_code=403, detail="Not authorized to view this payment"
@@ -674,11 +721,11 @@ async def paystack_webhook(request: Request, db: Session = Depends(get_db)):
 
             if p:
                 p.status = "paid"
-                p.transaction_date = (
-                    data.get("paid_at")
-                    or data.get("transaction_date")
-                    or p.transaction_date
+                parsed_dt = _parse_iso_datetime(
+                    data.get("paid_at") or data.get("transaction_date")
                 )
+                if parsed_dt:
+                    p.transaction_date = parsed_dt
                 p.payment_method = (
                     data.get("authorization", {}).get("channel")
                     if data.get("authorization")

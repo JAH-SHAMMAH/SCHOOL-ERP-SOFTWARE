@@ -443,6 +443,49 @@ class BookIssue(Base):
     issuer = relationship("User")
 
 
+class StoreItem(Base):
+    __tablename__ = "store_items"
+
+    id = Column(String(36), primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    price = Column(Float, nullable=False, default=0.0)
+    stock = Column(Integer, nullable=False, default=0)
+    image_url = Column(String(1000), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    order_items = relationship("OrderItem", back_populates="item")
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    total_amount = Column(Float, nullable=False, default=0.0)
+    status = Column(String(50), nullable=False, default="cart")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User")
+    items = relationship(
+        "OrderItem", back_populates="order", cascade="all, delete-orphan"
+    )
+
+
+class OrderItem(Base):
+    __tablename__ = "order_items"
+
+    id = Column(String(36), primary_key=True, index=True)
+    order_id = Column(String(36), ForeignKey("orders.id"), nullable=False)
+    item_id = Column(String(36), ForeignKey("store_items.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+    unit_price = Column(Float, nullable=False, default=0.0)
+    subtotal = Column(Float, nullable=False, default=0.0)
+
+    order = relationship("Order", back_populates="items")
+    item = relationship("StoreItem", back_populates="order_items")
+
+
 class WebhookEvent(Base):
     __tablename__ = "webhook_events"
 

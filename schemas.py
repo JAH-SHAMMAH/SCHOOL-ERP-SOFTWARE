@@ -544,3 +544,68 @@ class BookIssue(BookIssueBase):
     status: str
     issued_by: str
     created_at: datetime
+
+
+# -------------------------
+# Store and Orders
+# -------------------------
+
+
+class StoreItemBase(BaseModel):
+    title: str
+    description: Optional[str] = None
+    price: float
+    stock: int = 0
+    image_url: Optional[str] = None
+
+
+class StoreItemCreate(StoreItemBase):
+    pass
+
+
+class StoreItem(StoreItemBase):
+    id: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class OrderItemBase(BaseModel):
+    item_id: str
+    quantity: int
+
+
+class OrderItemCreate(OrderItemBase):
+    pass
+
+
+class OrderBase(BaseModel):
+    user_id: str
+
+
+class OrderCreate(OrderBase):
+    items: List[OrderItemCreate]
+
+
+class OrderItemResponse(BaseModel):
+    id: str
+    item_id: str
+    quantity: int
+    unit_price: float
+    subtotal: float
+
+    class Config:
+        from_attributes = True
+
+
+class OrderResponse(BaseModel):
+    id: str
+    user_id: str
+    total_amount: float
+    status: str
+    items: List[OrderItemResponse] = []
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

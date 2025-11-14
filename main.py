@@ -485,6 +485,326 @@ async def login_for_access_token(
     }
 
 
+# --- Lightweight demo endpoints for new dashboard features (class distribution, store, birthdays)
+SAMPLE_CATALOG = [
+    {
+        "id": "item-1",
+        "title": "School Hoodie",
+        "price": 2500,
+        "image_url": "/static/fair-educare/img/hoodie.jpg",
+    },
+    {
+        "id": "item-2",
+        "title": "Math Textbook",
+        "price": 1200,
+        "image_url": "/static/fair-educare/img/book.jpg",
+    },
+    {
+        "id": "item-3",
+        "title": "Stationery Pack",
+        "price": 800,
+        "image_url": "/static/fair-educare/img/stationery.jpg",
+    },
+]
+
+# In-memory carts per user (demo only)
+_CARTS = {}
+
+
+@app.get("/dashboard/stats")
+async def dashboard_stats(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Get dashboard statistics for admin dashboard."""
+    total_students = db.query(func.count(db_models.Student.id)).scalar() or 0
+    total_teachers = db.query(func.count(db_models.Teacher.id)).scalar() or 0
+    total_classes = db.query(func.count(db_models.Class.id)).scalar() or 0
+    pending_fees = (
+        db.query(func.count(db_models.FeePayment.id))
+        .filter(db_models.FeePayment.payment_status == "pending")
+        .scalar()
+        or 0
+    )
+    return {
+        "total_students": total_students,
+        "total_teachers": total_teachers,
+        "total_classes": total_classes,
+        "pending_fee_students": pending_fees,
+    }
+
+
+@app.get("/reports/class-distribution")
+async def class_distribution(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    # Return labels and counts for a simple bar chart
+    classes = db.query(db_models.Class).all()
+    labels = []
+    counts = []
+    for c in classes:
+        labels.append(c.name or str(getattr(c, "id", "")))
+        # prefer stored student_count, fallback to counting students
+        if getattr(c, "student_count", None) is not None:
+            counts.append(int(c.student_count or 0))
+        else:
+            cnt = (
+                db.query(func.count(db_models.Student.id))
+                .filter(db_models.Student.class_id == c.id)
+                .scalar()
+                or 0
+            )
+            counts.append(int(cnt))
+    return {"labels": labels, "counts": counts}
+
+
+def _next_birthday(dob: Optional[date]):
+    if not dob:
+        return None
+    today = date.today()
+    try:
+        this_year = date(today.year, dob.month, dob.day)
+    except Exception:
+        return None
+    if this_year >= today:
+        return this_year
+    return date(today.year + 1, dob.month, dob.day)
+
+
+@app.get("/news/birthdays")
+async def upcoming_birthdays(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    # Collect upcoming birthdays for students and teachers in the next 30 days
+    upcoming = []
+    horizon_days = 30
+    all_students = db.query(db_models.Student).all()
+    for s in all_students:
+        bd = getattr(s, "dob", None)
+        nb = _next_birthday(bd)
+        if not nb:
+            continue
+        delta = (nb - date.today()).days
+        if 0 <= delta <= horizon_days:
+            upcoming.append(
+                {
+                    "type": "student",
+                    "name": f"{s.first_name} {s.last_name}",
+                    "date": nb.isoformat(),
+                }
+            )
+
+    all_teachers = db.query(db_models.Teacher).all()
+    for t in all_teachers:
+        bd = getattr(t, "date_of_birth", None)
+        nb = _next_birthday(bd)
+        if not nb:
+            continue
+        delta = (nb - date.today()).days
+        if 0 <= delta <= horizon_days:
+            upcoming.append(
+                {
+                    "type": "teacher",
+                    "name": f"{t.first_name} {t.last_name}",
+                    "date": nb.isoformat(),
+                }
+            )
+
+    # sort by date
+    upcoming_sorted = sorted(upcoming, key=lambda x: x["date"]) if upcoming else []
+    return {"birthdays": upcoming_sorted}
+
+
+@app.get("/store/catalog")
+async def store_catalog(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    items = (
+        db.query(db_models.StoreItem)
+        .order_by(db_models.StoreItem.created_at.desc())
+        .all()
+    )
+    result = []
+    for it in items:
+        result.append(
+            {
+                "id": it.id,
+                "title": it.title,
+                "description": it.description,
+                "price": it.price,
+                "stock": it.stock,
+                "image_url": it.image_url,
+            }
+        )
+    return {"items": result}
+
+
+@app.get("/store/cart")
+async def get_cart(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    uid = getattr(current_user, "id", None)
+    order = (
+        db.query(db_models.Order)
+        .filter(db_models.Order.user_id == uid)
+        .filter(db_models.Order.status == "cart")
+        .first()
+    )
+    if not order:
+        return {"items": []}
+    items = []
+    for oi in order.items:
+        items.append(
+            {
+                "id": oi.id,
+                "item_id": oi.item_id,
+                "title": getattr(oi.item, "title", None),
+                "qty": oi.quantity,
+                "price": oi.unit_price,
+                "subtotal": oi.subtotal,
+                "image_url": getattr(oi.item, "image_url", None),
+            }
+        )
+    return {"items": items}
+
+
+@app.post("/store/cart")
+async def add_to_cart(
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    item_id = payload.get("item_id")
+    qty = int(payload.get("qty", 1) or 1)
+    if not item_id:
+        raise HTTPException(status_code=400, detail="item_id required")
+    item = (
+        db.query(db_models.StoreItem).filter(db_models.StoreItem.id == item_id).first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    if item.stock is not None and item.stock < qty:
+        raise HTTPException(status_code=400, detail="Not enough stock")
+    uid = getattr(current_user, "id", None)
+    order = (
+        db.query(db_models.Order)
+        .filter(db_models.Order.user_id == uid)
+        .filter(db_models.Order.status == "cart")
+        .first()
+    )
+    if not order:
+        order = db_models.Order(
+            id=str(uuid.uuid4()),
+            user_id=uid,
+            status="cart",
+            total_amount=0.0,
+            created_at=datetime.utcnow(),
+        )
+        db.add(order)
+        db.flush()
+
+    # find existing order item
+    oi = None
+    for existing in order.items:
+        if existing.item_id == item_id:
+            oi = existing
+            break
+    if oi:
+        oi.quantity += qty
+        oi.subtotal = oi.quantity * oi.unit_price
+    else:
+        oi = db_models.OrderItem(
+            id=str(uuid.uuid4()),
+            order_id=order.id,
+            item_id=item.id,
+            quantity=qty,
+            unit_price=item.price,
+            subtotal=qty * item.price,
+        )
+        db.add(oi)
+
+    # recompute total
+    db.flush()
+    total = 0.0
+    for existing in order.items:
+        total += float(getattr(existing, "subtotal", 0.0))
+    order.total_amount = total
+    db.add(order)
+    db.commit()
+
+    return await get_cart(db=db, current_user=current_user)
+
+
+@app.post("/store/checkout")
+async def checkout(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    uid = getattr(current_user, "id", None)
+    order = (
+        db.query(db_models.Order)
+        .filter(db_models.Order.user_id == uid)
+        .filter(db_models.Order.status == "cart")
+        .first()
+    )
+    if not order or not order.items:
+        raise HTTPException(status_code=400, detail="Cart empty")
+    # recompute and ensure stock
+    total = 0.0
+    for oi in order.items:
+        if oi.item and oi.item.stock is not None and oi.item.stock < oi.quantity:
+            raise HTTPException(
+                status_code=400, detail=f"Item {oi.item.title} out of stock"
+            )
+        total += float(oi.subtotal or (oi.unit_price * oi.quantity))
+
+    # reduce stock
+    for oi in order.items:
+        if oi.item and oi.item.stock is not None:
+            oi.item.stock = max(0, oi.item.stock - oi.quantity)
+            db.add(oi.item)
+
+    order.total_amount = total
+    order.status = "placed"
+    db.add(order)
+    db.commit()
+
+    return {"message": "Checkout successful", "total": total, "order_id": order.id}
+
+
+@app.post("/store/items", status_code=status.HTTP_201_CREATED)
+async def create_store_item(
+    item: schema_models.StoreItemCreate,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    item_id = str(uuid.uuid4())
+    db_item = db_models.StoreItem(
+        id=item_id,
+        title=item.title,
+        description=item.description,
+        price=item.price,
+        stock=item.stock,
+        image_url=item.image_url,
+        created_at=datetime.utcnow(),
+    )
+    db.add(db_item)
+    db.commit()
+    db.refresh(db_item)
+    return {
+        "id": db_item.id,
+        "title": db_item.title,
+        "description": db_item.description,
+        "price": db_item.price,
+        "stock": db_item.stock,
+        "image_url": db_item.image_url,
+    }
+
+
 @app.get("/auth/me", response_model=schema_models.User)
 async def get_current_user_info(
     current_user: db_models.User = Depends(get_current_user),
@@ -940,6 +1260,20 @@ async def mark_bulk_attendance(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create bulk attendance: {str(e)}",
         )
+
+
+@app.get("/attendance", response_model=List[Attendance])
+async def get_all_attendance(
+    class_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get attendance records (optionally filtered by class)"""
+    query = db.query(db_models.Attendance)
+    if class_id:
+        query = query.filter(db_models.Attendance.class_id == class_id)
+    records = query.order_by(db_models.Attendance.date.desc()).limit(100).all()
+    return records
 
 
 @app.get("/attendance/student/{student_id}", response_model=List[Attendance])
