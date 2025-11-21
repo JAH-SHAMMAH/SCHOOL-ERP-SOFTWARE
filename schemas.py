@@ -101,6 +101,10 @@ class User(UserBase):
     id: str
     created_at: datetime
     updated_at: datetime
+    photo_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
 
 
 class StudentBase(BaseModel):
@@ -136,6 +140,7 @@ class StudentResponse(BaseModel):
     is_active: bool
     created_at: datetime
     updated_at: datetime
+    photo_url: Optional[str] = None
 
     class Config:
         from_attributes = True  # For Pydantic v2, use orm_mode = True for v1
@@ -170,6 +175,38 @@ class StudentCreate(BaseModel):
         return v
 
     @field_validator("gender", "admission_no", "class_id", "phone", mode="before")
+    @classmethod
+    def empty_str_to_none(cls, v):
+        if v == "":
+            return None
+        return v
+
+
+class StudentUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    dob: Optional[datetime] = None
+    gender: Optional[str] = None
+    admission_no: Optional[str] = None
+    class_id: Optional[str] = None
+    phone: Optional[str] = None
+    photo_url: Optional[str] = None
+
+    @field_validator("dob", mode="before")
+    @classmethod
+    def parse_dob(cls, v):
+        if v == "" or v is None:
+            return None
+        if isinstance(v, str):
+            try:
+                return datetime.fromisoformat(v)
+            except ValueError:
+                return None
+        return v
+
+    @field_validator(
+        "gender", "admission_no", "class_id", "phone", "photo_url", mode="before"
+    )
     @classmethod
     def empty_str_to_none(cls, v):
         if v == "":
@@ -225,6 +262,20 @@ class TeacherResponse(BaseModel):
 class TeacherCreate(TeacherBase):
     user_email: EmailStr
     user_password: str
+
+
+class TeacherUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    gender: Optional[Gender] = None
+    employee_id: Optional[str] = None
+    qualification: Optional[str] = None
+    specialization: Optional[str] = None
+    experience_years: Optional[int] = None
+    joining_date: Optional[date] = None
+    address: Optional[str] = None
+    emergency_contact: Optional[str] = None
 
 
 class Teacher(TeacherBase):
@@ -606,6 +657,107 @@ class OrderResponse(BaseModel):
     status: str
     items: List[OrderItemResponse] = []
     created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# Store Reviews
+class StoreReviewCreate(BaseModel):
+    item_id: str
+    rating: int
+    comment: Optional[str] = None
+
+    @validator("rating")
+    def validate_rating(cls, v):
+        if v < 1 or v > 5:
+            raise ValueError("rating must be between 1 and 5")
+        return v
+
+
+class StoreReview(BaseModel):
+    id: str
+    item_id: str
+    user_id: str
+    rating: int
+    comment: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+# =============================
+# AI Advisor Schemas
+# =============================
+class AdvisorMetricCreate(BaseModel):
+    metric_type: str
+    value: float
+    context: Optional[Dict[str, Any]] = None
+
+
+class AdvisorMetric(BaseModel):
+    id: str
+    user_id: Optional[str]
+    metric_type: str
+    value: float
+    context: Optional[Dict[str, Any]] = None
+    recorded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdvisorInsight(BaseModel):
+    id: str
+    user_id: Optional[str]
+    category: Optional[str]
+    insight_text: str
+    score: Optional[float]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdvisorInsightsResponse(BaseModel):
+    generated_at: datetime
+    insights: List[AdvisorInsight]
+    metrics_window_days: int
+    summary: Dict[str, Any]
+
+
+# =============================
+# Mailbox Schemas
+# =============================
+class MailMessageCreate(BaseModel):
+    recipient_email: EmailStr
+    subject: str
+    body: str
+    thread_id: Optional[str] = None
+
+
+class MailMessage(BaseModel):
+    id: str
+    sender_email: EmailStr
+    recipient_email: EmailStr
+    subject: str
+    body: str
+    is_read: bool
+    created_at: datetime
+    thread_id: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class MailMessageSummary(BaseModel):
+    id: str
+    sender_email: EmailStr
+    subject: str
+    is_read: bool
+    created_at: datetime
+    thread_id: Optional[str] = None
 
     class Config:
         from_attributes = True

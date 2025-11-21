@@ -348,6 +348,64 @@
         </div>
       </div>
 
+      <!-- Advisor Analytics Section -->
+      <div
+        id="advisorSection"
+        class="welcome-screen hidden"
+        style="margin-bottom: 25px"
+      >
+        <h2 style="margin-bottom: 15px">🤖 AI Advisor</h2>
+        <p style="margin-bottom: 20px; color: #555">
+          Unified academic & operational metrics with intelligent improvement
+          suggestions generated from recent school activity.
+        </p>
+        <div id="advisorLoading" style="padding: 20px; text-align: center">
+          Loading analytics...
+        </div>
+        <div
+          id="advisorError"
+          class="hidden"
+          style="color: #c0392b; font-weight: 600; margin-bottom: 15px"
+        ></div>
+        <div
+          id="advisorKpis"
+          class="hidden"
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+          "
+        ></div>
+        <div
+          id="advisorCharts"
+          class="hidden"
+          style="
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+          "
+        ></div>
+        <div
+          id="advisorInsights"
+          class="hidden"
+          style="background: #f8f9fa; padding: 20px; border-radius: 12px"
+        >
+          <h3 style="margin-bottom: 10px">🧠 Improvement Tips</h3>
+          <ul
+            id="insightList"
+            style="
+              list-style: none;
+              padding: 0;
+              margin: 0;
+              display: grid;
+              gap: 10px;
+            "
+          ></ul>
+        </div>
+      </div>
+
       <!-- Welcome Screen -->
       <div id="welcomeScreen" class="welcome-screen">
         <h1>📚 Welcome to Fairview Exam Platform</h1>
@@ -466,6 +524,192 @@
     </div>
 
     <script>
+      // =====================
+      // Advisor Analytics UI
+      // =====================
+      document.addEventListener("DOMContentLoaded", () => {
+        // Show advisor section early (will fill after fetch)
+        const section = document.getElementById("advisorSection");
+        if (section) section.classList.remove("hidden");
+        fetchAdvisorAnalytics();
+      });
+
+      async function fetchAdvisorAnalytics(days = 30) {
+        const loading = document.getElementById("advisorLoading");
+        const errorEl = document.getElementById("advisorError");
+        const kpiWrap = document.getElementById("advisorKpis");
+        const chartsWrap = document.getElementById("advisorCharts");
+        const insightsWrap = document.getElementById("advisorInsights");
+        const insightList = document.getElementById("insightList");
+        const token = localStorage.getItem("currentToken");
+
+        if (!token) {
+          loading.classList.add("hidden");
+          errorEl.textContent =
+            "Admin login required to view operational analytics.";
+          errorEl.classList.remove("hidden");
+          return;
+        }
+        try {
+          const res = await fetch(`/advisor/detailed?days=${days}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            throw new Error(`Request failed (${res.status})`);
+          }
+          const data = await res.json();
+          loading.classList.add("hidden");
+          renderAdvisorKPIs(data.totals, kpiWrap);
+          renderAdvisorCharts(data);
+          renderAdvisorInsights(data.insights || [], insightList);
+          kpiWrap.classList.remove("hidden");
+          chartsWrap.classList.remove("hidden");
+          insightsWrap.classList.remove("hidden");
+        } catch (err) {
+          loading.classList.add("hidden");
+          errorEl.textContent = `Failed to load analytics: ${err.message}`;
+          errorEl.classList.remove("hidden");
+        }
+      }
+
+      function renderAdvisorKPIs(totals, container) {
+        if (!totals || !container) return;
+        const defs = [
+          { key: "students", label: "Students" },
+          { key: "teachers", label: "Teachers" },
+          { key: "teacher_student_ratio", label: "Teacher/Student" },
+          { key: "attendance_rate", label: "Attendance %" },
+          { key: "exam_pass_rate", label: "Exam Pass %" },
+          { key: "unpaid_fees", label: "Unpaid Fees" },
+          { key: "store_revenue", label: "Store Revenue" },
+          { key: "avg_class_size", label: "Avg Class Size" },
+        ];
+        container.innerHTML = defs
+          .map((d) => {
+            const valRaw = totals[d.key];
+            let val = typeof valRaw === "number" ? valRaw : valRaw || 0;
+            if (d.key.includes("rate")) {
+              val = Math.round(val * 100) / 100;
+            }
+            return `<div style="background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                <div style="font-size:13px; color:#666;">${d.label}</div>
+                <div style="font-size:20px; font-weight:600; color:#2c3e50;">${val}</div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function renderAdvisorCharts(data) {
+        const chartsWrap = document.getElementById("advisorCharts");
+        if (!chartsWrap) return;
+        const gradeDist = data.grade_distribution || {};
+        const sentiment = data.sentiment_distribution || {};
+        const storePerf = data.store_performance || [];
+
+        chartsWrap.innerHTML = "";
+        chartsWrap.appendChild(simpleBarChart("Grade Distribution", gradeDist));
+        chartsWrap.appendChild(
+          simpleBarChart("Review Sentiment (Rating)", sentiment)
+        );
+        chartsWrap.appendChild(storePerformanceBlock(storePerf));
+      }
+
+      function simpleBarChart(title, obj) {
+        const maxVal = Math.max(1, ...Object.values(obj));
+        const el = document.createElement("div");
+        el.style.background = "#fff";
+        el.style.border = "1px solid #e0e0e0";
+        el.style.borderRadius = "10px";
+        el.style.padding = "15px";
+        el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+        el.innerHTML = `<h4 style="font-size:16px; margin:0 0 10px; color:#333;">${title}</h4>`;
+        const wrap = document.createElement("div");
+        wrap.style.display = "grid";
+        wrap.style.gap = "6px";
+        Object.entries(obj).forEach(([k, v]) => {
+          const row = document.createElement("div");
+          row.innerHTML = `<div style='font-size:12px; color:#555;'>${k}</div>
+            <div style='background:#eef2ff; height:8px; border-radius:4px; position:relative;'>
+              <div style='position:absolute; top:0; left:0; height:100%; width:${
+                (v / maxVal) * 100
+              }%; background:linear-gradient(90deg,#667eea,#764ba2); border-radius:4px;'></div>
+            </div>
+            <div style='font-size:11px; color:#777;'>${v}</div>`;
+          row.style.display = "grid";
+          row.style.gridTemplateColumns = "60px 1fr 30px";
+          row.style.alignItems = "center";
+          wrap.appendChild(row);
+        });
+        if (!Object.keys(obj).length) {
+          wrap.innerHTML =
+            '<div style="font-size:12px; color:#777;">No data</div>';
+        }
+        el.appendChild(wrap);
+        return el;
+      }
+
+      function storePerformanceBlock(rows) {
+        const el = document.createElement("div");
+        el.style.background = "#fff";
+        el.style.border = "1px solid #e0e0e0";
+        el.style.borderRadius = "10px";
+        el.style.padding = "15px";
+        el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+        el.innerHTML = `<h4 style="font-size:16px; margin:0 0 10px; color:#333;">Top Store Items</h4>`;
+        const list = document.createElement("div");
+        list.style.display = "grid";
+        list.style.gap = "8px";
+        if (!rows.length) {
+          list.innerHTML =
+            '<div style="font-size:12px; color:#777;">No completed orders</div>';
+        } else {
+          rows.forEach((r) => {
+            const item = document.createElement("div");
+            item.style.display = "flex";
+            item.style.justifyContent = "space-between";
+            item.style.fontSize = "12px";
+            item.style.padding = "6px 8px";
+            item.style.background = "#fafafa";
+            item.style.borderRadius = "6px";
+            item.innerHTML = `<span style='font-weight:600;'>${
+              r.title
+            }</span><span>${
+              r.quantity_sold
+            } sold</span><span style='color:#2c3e50;'>₦${r.revenue.toFixed(
+              2
+            )}</span>`;
+            list.appendChild(item);
+          });
+        }
+        el.appendChild(list);
+        return el;
+      }
+
+      function renderAdvisorInsights(insights, ul) {
+        if (!ul) return;
+        ul.innerHTML = "";
+        if (!insights.length) {
+          ul.innerHTML =
+            '<li style="font-size:13px; color:#777;">No insights available. System needs more data.</li>';
+          return;
+        }
+        insights.forEach((i) => {
+          const li = document.createElement("li");
+          li.style.padding = "12px 14px";
+          li.style.background = "#fff";
+          li.style.border = "1px solid #e0e0e0";
+          li.style.borderRadius = "8px";
+          li.style.boxShadow = "0 2px 6px rgba(0,0,0,0.05)";
+          li.innerHTML = `<div style='font-size:13px; color:#764ba2; font-weight:600; margin-bottom:4px;'>${(
+            i.category || "general"
+          ).toUpperCase()}</div>
+            <div style='font-size:14px; color:#2c3e50; line-height:1.4;'>${
+              i.insight_text
+            }</div>`;
+          ul.appendChild(li);
+        });
+      }
+
       // Sample exam data
       const examData = {
         waec: {

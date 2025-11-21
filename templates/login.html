@@ -1157,7 +1157,17 @@
 
       <div class="content">
         <div class="top-bar">
-          <h2 id="pageTitle">Dashboard</h2>
+          <div style="display: flex; align-items: center; gap: 12px">
+            <button
+              data-toggle="sidebar"
+              id="sidebarToggle"
+              class="btn btn-sm btn-outline-light"
+              title="Toggle sidebar"
+            >
+              <i class="fas fa-bars"></i>
+            </button>
+            <h2 id="pageTitle">Dashboard</h2>
+          </div>
           <div class="user-info">
             <div class="user-avatar" id="userAvatar">A</div>
             <div class="user-details">
@@ -1317,9 +1327,7 @@
           panel.classList.toggle("visible");
         }
         function openWhatsApp(pretext) {
-          const txt = encodeURIComponent(
-            pretext || "Hello, I need help with Fairview School ERP."
-          );
+          const txt = encodeURIComponent(pretext || "Hello, I need EXTRCARE!");
           const url = `https://wa.me/${CC_INT}?text=${txt}`;
           window.open(url, "_blank");
         }
@@ -1475,7 +1483,8 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
       // Cleaned role-based script
-      const API_BASE = "http://localhost:8000";
+      // Use the current page origin so API calls match where the page is served from
+      const API_BASE = window.location?.origin || "http://localhost:8000";
       const appState = { token: null, user: null, email: null, password: null };
 
       function showScreen(screen) {
@@ -1509,10 +1518,16 @@
 
       async function apiRequest(endpoint, options = {}) {
         const headers = {
-          "Content-Type": "application/json",
           ...(options.headers || {}),
         };
-        if (appState.token) headers.Authorization = `Bearer ${appState.token}`;
+        // Only set JSON content type when not sending FormData
+        const isFormData =
+          options && options.body && options.body instanceof FormData;
+        if (!isFormData) headers["Content-Type"] = "application/json";
+        // If caller supplied an Authorization header (e.g. adminOverrideToken), honor it.
+        // Otherwise fall back to the logged-in user's token stored in appState.
+        if (!headers.Authorization && appState.token)
+          headers.Authorization = `Bearer ${appState.token}`;
         const res = await fetch(`${API_BASE}${endpoint}`, {
           ...options,
           headers,
@@ -1528,19 +1543,149 @@
         return data;
       }
 
+      function resolvePhotoUrl(raw) {
+        if (!raw) return null;
+        if (/^(data:|https?:\/\/)/i.test(raw)) return raw;
+        if (raw.startsWith("/")) return `${API_BASE}${raw}`;
+        return `${API_BASE}/${raw}`;
+      }
+
       function updateUserInfo() {
         if (!appState.user) return;
         document.getElementById("userName").textContent =
           appState.user.full_name || appState.user.name || "User";
         document.getElementById("userRole").textContent =
           appState.user.role || "";
-        document.getElementById("userAvatar").textContent = (
-          appState.user.full_name ||
-          appState.user.name ||
-          "?"
-        )
-          .charAt(0)
-          .toUpperCase();
+        const avatarDiv = document.getElementById("userAvatar");
+        const photo = resolvePhotoUrl(appState.user.photo_url);
+        if (photo) {
+          const cacheBusted = `${photo}${
+            photo.includes("?") ? "&" : "?"
+          }v=${Date.now()}`;
+          avatarDiv.innerHTML = `<img src="${cacheBusted}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%;"/>`;
+        } else {
+          avatarDiv.textContent = (
+            appState.user.full_name ||
+            appState.user.name ||
+            "?"
+          )
+            .charAt(0)
+            .toUpperCase();
+        }
+      }
+
+      // Avatar/Profile helpers
+      function openProfileModal() {
+        const mEl = document.getElementById("profileModal");
+        if (!mEl) return;
+        loadProfileData();
+        const m = new bootstrap.Modal(mEl);
+        m.show();
+      }
+
+      async function loadProfileData() {
+        try {
+          const me = await apiRequest("/auth/me");
+          appState.user.photo_url =
+            me.photo_url || appState.user.photo_url || null;
+          const wrap = document.getElementById("profileAvatarWrapper");
+          if (wrap) {
+            const resolved = resolvePhotoUrl(appState.user.photo_url);
+            if (resolved) {
+              wrap.innerHTML = `<img src="${resolved}" alt="avatar" class="rounded-circle" style="width:120px;height:120px;object-fit:cover;"/>`;
+            } else {
+              const letter = (
+                appState.user.full_name ||
+                appState.user.name ||
+                "?"
+              )
+                .charAt(0)
+                .toUpperCase();
+              wrap.innerHTML = `<div class="d-flex align-items-center justify-content-center rounded-circle bg-primary text-white fw-bold" style="width:120px;height:120px;font-size:48px;">${letter}</div>`;
+            }
+          }
+          const pageAv = document.getElementById("profilePageAvatar");
+          if (pageAv) {
+            const resolvedProfile = resolvePhotoUrl(appState.user.photo_url);
+            if (resolvedProfile) {
+              pageAv.innerHTML = `<img src="${resolvedProfile}" alt="avatar" style="width:100%;height:100%;object-fit:cover;"/>`;
+            } else {
+              const letter2 = (
+                appState.user.full_name ||
+                appState.user.name ||
+                "?"
+              )
+                .charAt(0)
+                .toUpperCase();
+              pageAv.textContent = letter2;
+            }
+          }
+          updateUserInfo();
+        } catch (e) {
+          console.error("Profile load failed", e);
+        }
+      }
+
+      async function uploadAvatar() {
+        const input =
+          document.getElementById("avatarFileInput") ||
+          document.getElementById("profileAvatarFileInput");
+        const statusEl =
+          document.getElementById("avatarStatus") ||
+          document.getElementById("profileAvatarStatus");
+        statusEl.textContent = "";
+        if (!input.files || !input.files[0]) {
+          statusEl.textContent = "Select an image.";
+          return;
+        }
+        try {
+          const fd = new FormData();
+          fd.append("file", input.files[0]);
+          const res = await fetch(`${API_BASE}/auth/avatar`, {
+            method: "POST",
+            headers: appState.token
+              ? { Authorization: `Bearer ${appState.token}` }
+              : {},
+            body: fd,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok)
+            throw new Error(data.detail || data.message || "Upload failed");
+          appState.user.photo_url = data.photo_url;
+          statusEl.textContent = "Uploaded ✓";
+          loadProfileData();
+        } catch (e) {
+          statusEl.textContent = e.message;
+        }
+      }
+
+      async function removeAvatar() {
+        const statusEl =
+          document.getElementById("avatarStatus") ||
+          document.getElementById("profileAvatarStatus");
+        statusEl.textContent = "";
+        try {
+          const res = await fetch(`${API_BASE}/auth/avatar`, {
+            method: "DELETE",
+            headers: appState.token
+              ? { Authorization: `Bearer ${appState.token}` }
+              : {},
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok)
+            throw new Error(data.detail || data.message || "Remove failed");
+          appState.user.photo_url = null;
+          statusEl.textContent = "Removed.";
+          loadProfileData();
+        } catch (e) {
+          statusEl.textContent = e.message;
+        }
+      }
+
+      function triggerProfileAvatarUpload() {
+        const inp = document.getElementById("profileAvatarFileInput");
+        if (inp) inp.click();
+        inp?.addEventListener("change", () => uploadAvatar());
       }
 
       // OTP helpers
@@ -1707,6 +1852,7 @@
           title: "Main",
           items: [
             { endpoint: "dashboard", icon: "fa-home", label: "Dashboard" },
+            { endpoint: "store", icon: "fa-store", label: "Store" },
             {
               endpoint: "news-feed",
               icon: "fa-newspaper",
@@ -1728,6 +1874,22 @@
                 endpoint: "admin-news-feed",
                 icon: "fa-newspaper",
                 label: "News Feed",
+              },
+              {
+                endpoint: "pending-messages",
+                icon: "fa-clock",
+                label: "Pending Messages",
+              },
+            ],
+          });
+          // AI Advisor dedicated menu section
+          sections.push({
+            title: "AI Advisor",
+            items: [
+              {
+                endpoint: "admin-ai-advisor",
+                icon: "fa-robot",
+                label: "AI Advisor",
               },
             ],
           });
@@ -2124,10 +2286,12 @@
               "fee-payments": "Fee Payments",
               "pending-fees": "Pending Fees",
               payments: "Payments",
+              "admin-ai-advisor": "AI Advisor",
               // Admin endpoints
               "admin-sms": "SMS/WhatsApp",
               "admin-mailbox": "Mailbox",
               "admin-news-feed": "News Feed Management",
+              "pending-messages": "Pending Messages",
               "admin-e-classroom": "E-Classroom",
               "admin-lesson-planner": "Lesson Planner",
               "admin-assignments": "Assignments Management",
@@ -2237,6 +2401,7 @@
           renderPaymentStatus();
         },
         events: () => renderEvents(),
+        "admin-ai-advisor": () => renderAdminAiAdvisor(),
         students: async () => {
           try {
             if ((appState.user?.role || "").toLowerCase() !== "admin") {
@@ -2413,6 +2578,7 @@
         "admin-sms": () => renderAdminSMS(),
         "admin-mailbox": () => renderAdminMailbox(),
         "admin-news-feed": () => renderAdminNewsFeed(),
+        "pending-messages": () => renderAdminPendingMessages(),
         "admin-e-classroom": () => renderAdminEClassroom(),
         "admin-lesson-planner": () => renderAdminLessonPlanner(),
         "admin-assignments": () => renderAdminAssignments(),
@@ -2511,12 +2677,7 @@
         "parent-fees": () => renderParentFees(),
         "parent-bills": () => renderParentBills(),
         "parent-store": async () => {
-          try {
-            const res = await apiRequest("/store/catalog");
-            renderParentStore(res.items || []);
-          } catch (err) {
-            renderError(err.message || String(err));
-          }
+          window.open("/store", "_blank");
         },
         "parent-store-appointments": () => renderParentStoreAppointments(),
         "parent-feedback": () => renderParentFeedback(),
@@ -2524,42 +2685,382 @@
         "parent-finance": () => renderParentFinance(),
       };
 
+      // Global store endpoint to open standalone store UI
+      endpointHandlers["store"] = () => {
+        window.open("/store", "_blank");
+      };
+
       // minimal dashboards and renderers reused
       function renderAdminDashboard() {
         document.getElementById("pageTitle").textContent = "Admin Dashboard";
         document.getElementById("contentArea").innerHTML = `
-          <div class="d-flex justify-content-between align-items-start">
-            <div style="flex:1">
-              <div class="stats-grid">
-                <div class="stat-card"><div class="icon" style="background:rgba(99,102,241,0.1);color:#6366f1"><i class="fas fa-users"></i></div><h3 id="totalStudents">-</h3><p>Total Students</p></div>
-                <div class="stat-card"><div class="icon" style="background:rgba(245,158,11,0.1);color:#f59e0b"><i class="fas fa-chalkboard-teacher"></i></div><h3 id="totalTeachers">-</h3><p>Total Teachers</p></div>
-                <div class="stat-card"><div class="icon" style="background:rgba(16,185,129,0.1);color:#10b981"><i class="fas fa-door-open"></i></div><h3 id="totalClasses">-</h3><p>Total Classes</p></div>
-                <div class="stat-card"><div class="icon" style="background:rgba(239,68,68,0.1);color:#ef4444"><i class="fas fa-exclamation-circle"></i></div><h3 id="pendingFees">-</h3><p>Pending Fees</p></div>
-              </div>
-              <div class="alert alert-info mt-4"><i class="fas fa-info-circle"></i> Welcome to the School ERP Admin Dashboard. You have full access to all features.</div>
+          <div class="stats-grid">
+            <div class="stat-card"><div class="icon" style="background:rgba(99,102,241,0.1);color:#6366f1"><i class="fas fa-users"></i></div><h3 id="totalStudents">-</h3><p>Total Students</p></div>
+            <div class="stat-card"><div class="icon" style="background:rgba(245,158,11,0.1);color:#f59e0b"><i class="fas fa-chalkboard-teacher"></i></div><h3 id="totalTeachers">-</h3><p>Total Teachers</p></div>
+            <div class="stat-card"><div class="icon" style="background:rgba(16,185,129,0.1);color:#10b981"><i class="fas fa-door-open"></i></div><h3 id="totalClasses">-</h3><p>Total Classes</p></div>
+            <div class="stat-card"><div class="icon" style="background:rgba(239,68,68,0.1);color:#ef4444"><i class="fas fa-exclamation-circle"></i></div><h3 id="pendingFees">-</h3><p>Pending Fees</p></div>
+          </div>
 
-              <div class="card mt-4 p-3">
-                <h6>Insights</h6>
-                <div style="width:100%;max-width:720px;"><canvas id="classChart" width="720" height="200"></canvas></div>
-                <div class="d-flex gap-2 mt-2">
-                  <button class="btn btn-sm btn-outline-primary" onclick="endpointHandlers['class-distribution']()">Refresh Class Distribution</button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="endpointHandlers['news-birthdays']()">Upcoming Birthdays</button>
-                  <button class="btn btn-sm btn-outline-success" onclick="endpointHandlers['store-catalog']()">Open Store</button>
+          <div class="row g-3">
+            <div class="col-lg-7">
+              <div class="card">
+                <div class="card-header"><i class="fas fa-table"></i> Store Analytics</div>
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                      <thead class="table-light"><tr><th>Item</th><th>Sales</th><th>Revenue (₦)</th></tr></thead>
+                      <tbody id="analyticsPopularItems"><tr><td colspan="3" class="text-center text-muted">Loading...</td></tr></tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-            <div style="width:300px; margin-left:20px">
-              <div class="card p-3 mb-3">
-                <h6 class="mb-3">Quick Actions</h6>
-                <button class="btn btn-sm btn-primary w-100 mb-2" onclick="showAddFeeModal()"><i class="fas fa-money-bill-wave me-2"></i> Add Fee Structure</button>
-                <button class="btn btn-sm btn-secondary w-100 mb-2" onclick="showAddEventModal()"><i class="fas fa-calendar-plus me-2"></i> Add Event</button>
-                <button class="btn btn-sm btn-outline-primary w-100 mb-2" onclick="endpointHandlers['fee-structures']()"><i class="fas fa-list me-2"></i> View Fee Structures</button>
-                <button class="btn btn-sm btn-outline-success w-100" onclick="endpointHandlers['view-cart']()"><i class="fas fa-shopping-cart me-2"></i> View Store Cart</button>
+            <div class="col-lg-5">
+              <div class="card" id="advisorSection">
+                <div class="card-header"><i class="fas fa-robot"></i> AI Advisor</div>
+                <div class="card-body">
+                  <p class="text-muted mb-2">Unified academic & operational metrics with intelligent suggestions.</p>
+                  <div id="advisorLoading" class="py-2 text-center">Loading analytics...</div>
+                  <div id="advisorError" class="alert alert-danger d-none"></div>
+                  <div id="advisorKpis" class="d-none" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:15px"></div>
+                  <div id="advisorCharts" class="d-none" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:15px;margin-bottom:15px"></div>
+                  <div id="advisorInsights" class="d-none">
+                    <h6 class="mb-2"><i class="fas fa-lightbulb me-1"></i> Improvement Tips</h6>
+                    <ul id="insightList" class="list-unstyled mb-0" style="display:grid;gap:8px"></ul>
+                  </div>
+                </div>
               </div>
+            </div>
+          </div>
+
+          <div class="card mt-3 p-3">
+            <h6 class="mb-2">Insights</h6>
+            <div style="width:100%;max-width:720px;"><canvas id="classChart" width="720" height="200"></canvas></div>
+            <div class="d-flex gap-2 mt-2">
+              <button class="btn btn-sm btn-outline-primary" onclick="endpointHandlers['class-distribution']()">Refresh Class Distribution</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="endpointHandlers['news-birthdays']()">Upcoming Birthdays</button>
+              <button class="btn btn-sm btn-outline-success" onclick="endpointHandlers['store-catalog']()">Open Store</button>
             </div>
           </div>
         `;
         loadDashboardStats();
+        // Load analytics and advisor
+        (async () => {
+          try {
+            const analytics = await apiRequest("/analytics/store");
+            const tbody = document.getElementById("analyticsPopularItems");
+            tbody.innerHTML =
+              (analytics.popular_items || [])
+                .map(
+                  (it) => `
+              <tr><td>${it.name}</td><td>${it.sales}</td><td>${
+                    (it.revenue ?? 0).toLocaleString?.() || it.revenue
+                  }</td></tr>
+            `
+                )
+                .join("") ||
+              '<tr><td colspan="3" class="text-center text-muted">No data</td></tr>';
+          } catch (e) {}
+          // Use unified AI Advisor analytics snippet
+          fetchAdvisorAnalytics();
+        })();
+      }
+      // Detailed AI Advisor view
+      function renderAdminAiAdvisor() {
+        document.getElementById("pageTitle").textContent = "AI Advisor";
+        const el = document.getElementById("contentArea");
+        el.innerHTML = `
+          <div class="card mb-3">
+            <div class="card-header"><i class="fas fa-robot"></i> AI Advisor Overview</div>
+            <div class="card-body">
+              <p class="text-muted mb-2">Comprehensive academic, operational and commercial metrics with improvement insights.</p>
+              <div id="aiAdvisorError" class="alert alert-danger d-none"></div>
+              <div id="aiAdvisorLoading" class="text-center py-3">Loading analytics...</div>
+              <div id="aiAdvisorKpis" class="row g-3 d-none"></div>
+              <div id="aiAdvisorCharts" class="row g-3 d-none"></div>
+              <div id="aiAdvisorInsights" class="mt-3 d-none">
+                <h6><i class="fas fa-lightbulb me-1"></i> Improvement Tips</h6>
+                <ul id="aiAdvisorInsightList" class="list-unstyled mb-0"></ul>
+              </div>
+            </div>
+          </div>`;
+        loadAdminAiAdvisor();
+      }
+      async function loadAdminAiAdvisor(days = 30) {
+        const token = appState.token;
+        const errEl = document.getElementById("aiAdvisorError");
+        const loadEl = document.getElementById("aiAdvisorLoading");
+        const kpiRow = document.getElementById("aiAdvisorKpis");
+        const chartsRow = document.getElementById("aiAdvisorCharts");
+        const insightsWrap = document.getElementById("aiAdvisorInsights");
+        const insightList = document.getElementById("aiAdvisorInsightList");
+        if (!token) {
+          errEl.textContent = "Authentication required.";
+          errEl.classList.remove("d-none");
+          loadEl.classList.add("d-none");
+          return;
+        }
+        try {
+          const data = await apiRequest(`/advisor/detailed?days=${days}`);
+          loadEl.classList.add("d-none");
+          renderAdminAdvisorKpis(data.totals, kpiRow);
+          renderAdminAdvisorCharts(data, chartsRow);
+          renderAdminAdvisorInsights(data.insights || [], insightList);
+          kpiRow.classList.remove("d-none");
+          chartsRow.classList.remove("d-none");
+          insightsWrap.classList.remove("d-none");
+        } catch (e) {
+          loadEl.classList.add("d-none");
+          errEl.textContent = e.message;
+          errEl.classList.remove("d-none");
+        }
+      }
+      function renderAdminAdvisorKpis(totals, row) {
+        if (!totals || !row) return;
+        const defs = [
+          ["students", "Students"],
+          ["teachers", "Teachers"],
+          ["teacher_student_ratio", "Teacher/Student"],
+          ["attendance_rate", "Attendance %"],
+          ["exam_pass_rate", "Exam Pass %"],
+          ["unpaid_fees", "Unpaid Fees"],
+          ["store_revenue", "Store Revenue"],
+          ["avg_class_size", "Avg Class Size"],
+        ];
+        row.innerHTML = defs
+          .map(([k, label]) => {
+            let val = totals[k];
+            if (k.includes("rate")) val = Math.round(val * 100) / 100;
+            return `<div class="col-sm-6 col-md-3"><div class="p-3 border rounded bg-white h-100"><div class="small text-muted">${label}</div><div class="fw-bold fs-5">${
+              val ?? 0
+            }</div></div></div>`;
+          })
+          .join("");
+      }
+      function renderAdminAdvisorCharts(data, row) {
+        if (!row) return;
+        const grade = data.grade_distribution || {};
+        const sentiment = data.sentiment_distribution || {};
+        const storePerf = data.store_performance || [];
+        row.innerHTML = `
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="mb-2">Grade Distribution</h6>${barList(
+            grade
+          )}</div></div>
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="mb-2">Review Sentiment</h6>${barList(
+            sentiment
+          )}</div></div>
+          <div class="col-md-4"><div class="p-3 border rounded bg-white"><h6 class="mb-2">Top Store Items</h6>${storeItemsList(
+            storePerf
+          )}</div></div>`;
+      }
+      function barList(obj) {
+        if (!Object.keys(obj).length)
+          return '<div class="text-muted small">No data</div>';
+        const maxVal = Math.max(1, ...Object.values(obj));
+        return Object.entries(obj)
+          .map(
+            ([k, v]) =>
+              `<div class="mb-1"><div class="small">${k}</div><div class="progress" style="height:6px"><div class="progress-bar bg-primary" style="width:${
+                (v / maxVal) * 100
+              }%"></div></div><div class="small text-muted">${v}</div></div>`
+          )
+          .join("");
+      }
+      function storeItemsList(rows) {
+        if (!rows.length)
+          return '<div class="text-muted small">No completed orders</div>';
+        return rows
+          .map(
+            (r) =>
+              `<div class="d-flex justify-content-between small border rounded p-1 mb-1"><span class="fw-semibold">${
+                r.title
+              }</span><span>${
+                r.quantity_sold
+              } sold</span><span>₦${r.revenue.toFixed(2)}</span></div>`
+          )
+          .join("");
+      }
+      function renderAdminAdvisorInsights(insights, ul) {
+        if (!ul) return;
+        ul.innerHTML =
+          insights
+            .map(
+              (i) =>
+                `<li class="border rounded p-2 mb-2"><div class="small text-uppercase text-secondary fw-semibold">${
+                  i.category || "general"
+                }</div><div>${i.insight_text}</div></li>`
+            )
+            .join("") ||
+          '<li class="text-muted small">No insights available.</li>';
+      }
+      // --- Embedded AI Advisor snippet functions (for admin dashboard) ---
+      async function fetchAdvisorAnalytics(days = 30) {
+        const loading = document.getElementById("advisorLoading");
+        const errorEl = document.getElementById("advisorError");
+        const kpiWrap = document.getElementById("advisorKpis");
+        const chartsWrap = document.getElementById("advisorCharts");
+        const insightsWrap = document.getElementById("advisorInsights");
+        const insightList = document.getElementById("insightList");
+        const token = localStorage.getItem("currentToken") || appState.token;
+        if (!token) {
+          loading?.classList.add("d-none");
+          if (errorEl) {
+            errorEl.textContent =
+              "Admin login required to view operational analytics.";
+            errorEl.classList.remove("d-none");
+          }
+          return;
+        }
+        try {
+          const res = await fetch(`/advisor/detailed?days=${days}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) throw new Error(`Request failed (${res.status})`);
+          const data = await res.json();
+          loading?.classList.add("d-none");
+          renderAdvisorKPIs(data.totals, kpiWrap);
+          renderAdvisorCharts(data);
+          renderAdvisorInsights(data.insights || [], insightList);
+          kpiWrap?.classList.remove("d-none");
+          chartsWrap?.classList.remove("d-none");
+          insightsWrap?.classList.remove("d-none");
+        } catch (err) {
+          loading?.classList.add("d-none");
+          if (errorEl) {
+            errorEl.textContent = `Failed to load analytics: ${err.message}`;
+            errorEl.classList.remove("d-none");
+          }
+        }
+      }
+      function renderAdvisorKPIs(totals, container) {
+        if (!totals || !container) return;
+        const defs = [
+          { key: "students", label: "Students" },
+          { key: "teachers", label: "Teachers" },
+          { key: "teacher_student_ratio", label: "Teacher/Student" },
+          { key: "attendance_rate", label: "Attendance %" },
+          { key: "exam_pass_rate", label: "Exam Pass %" },
+          { key: "unpaid_fees", label: "Unpaid Fees" },
+          { key: "store_revenue", label: "Store Revenue" },
+          { key: "avg_class_size", label: "Avg Class Size" },
+        ];
+        container.innerHTML = defs
+          .map((d) => {
+            const valRaw = totals[d.key];
+            let val = typeof valRaw === "number" ? valRaw : valRaw || 0;
+            if (d.key.includes("rate")) val = Math.round(val * 100) / 100;
+            return `<div style="background:#fff; border:1px solid #e0e0e0; border-radius:10px; padding:12px; box-shadow:0 4px 12px rgba(0,0,0,0.05);">
+                <div style="font-size:11px; color:#666;">${d.label}</div>
+                <div style="font-size:18px; font-weight:600; color:#2c3e50;">${val}</div>
+            </div>`;
+          })
+          .join("");
+      }
+      function renderAdvisorCharts(data) {
+        const chartsWrap = document.getElementById("advisorCharts");
+        if (!chartsWrap) return;
+        const gradeDist = data.grade_distribution || {};
+        const sentiment = data.sentiment_distribution || {};
+        const storePerf = data.store_performance || [];
+        chartsWrap.innerHTML = "";
+        chartsWrap.appendChild(simpleBarChart("Grade Distribution", gradeDist));
+        chartsWrap.appendChild(
+          simpleBarChart("Review Sentiment (Rating)", sentiment)
+        );
+        chartsWrap.appendChild(storePerformanceBlock(storePerf));
+      }
+      function simpleBarChart(title, obj) {
+        const maxVal = Math.max(1, ...Object.values(obj));
+        const el = document.createElement("div");
+        el.style.background = "#fff";
+        el.style.border = "1px solid #e0e0e0";
+        el.style.borderRadius = "10px";
+        el.style.padding = "15px";
+        el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+        el.innerHTML = `<h4 style="font-size:14px; margin:0 0 8px; color:#333;">${title}</h4>`;
+        const wrap = document.createElement("div");
+        wrap.style.display = "grid";
+        wrap.style.gap = "6px";
+        Object.entries(obj).forEach(([k, v]) => {
+          const row = document.createElement("div");
+          row.innerHTML = `<div style='font-size:11px; color:#555;'>${k}</div>
+            <div style='background:#eef2ff; height:8px; border-radius:4px; position:relative;'>
+              <div style='position:absolute; top:0; left:0; height:100%; width:${
+                (v / maxVal) * 100
+              }%; background:linear-gradient(90deg,#667eea,#764ba2); border-radius:4px;'></div>
+            </div>
+            <div style='font-size:10px; color:#777;'>${v}</div>`;
+          row.style.display = "grid";
+          row.style.gridTemplateColumns = "60px 1fr 28px";
+          row.style.alignItems = "center";
+          wrap.appendChild(row);
+        });
+        if (!Object.keys(obj).length) {
+          wrap.innerHTML =
+            '<div style="font-size:11px; color:#777;">No data</div>';
+        }
+        el.appendChild(wrap);
+        return el;
+      }
+      function storePerformanceBlock(rows) {
+        const el = document.createElement("div");
+        el.style.background = "#fff";
+        el.style.border = "1px solid #e0e0e0";
+        el.style.borderRadius = "10px";
+        el.style.padding = "15px";
+        el.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+        el.innerHTML = `<h4 style="font-size:14px; margin:0 0 8px; color:#333;">Top Store Items</h4>`;
+        const list = document.createElement("div");
+        list.style.display = "grid";
+        list.style.gap = "8px";
+        if (!rows.length) {
+          list.innerHTML =
+            '<div style="font-size:11px; color:#777;">No completed orders</div>';
+        } else {
+          rows.forEach((r) => {
+            const item = document.createElement("div");
+            item.style.display = "flex";
+            item.style.justifyContent = "space-between";
+            item.style.fontSize = "11px";
+            item.style.padding = "6px 8px";
+            item.style.background = "#fafafa";
+            item.style.borderRadius = "6px";
+            item.innerHTML = `<span style='font-weight:600;'>${
+              r.title
+            }</span><span>${
+              r.quantity_sold
+            } sold</span><span style='color:#2c3e50;'>₦${r.revenue.toFixed(
+              2
+            )}</span>`;
+            list.appendChild(item);
+          });
+        }
+        el.appendChild(list);
+        return el;
+      }
+      function renderAdvisorInsights(insights, ul) {
+        if (!ul) return;
+        ul.innerHTML = "";
+        if (!insights.length) {
+          ul.innerHTML =
+            '<li style="font-size:12px; color:#777;">No insights available. System needs more data.</li>';
+          return;
+        }
+        insights.forEach((i) => {
+          const li = document.createElement("li");
+          li.style.padding = "10px 12px";
+          li.style.background = "#fff";
+          li.style.border = "1px solid #e0e0e0";
+          li.style.borderRadius = "8px";
+          li.style.boxShadow = "0 2px 6px rgba(0,0,0,0.05)";
+          li.innerHTML = `<div style='font-size:11px; color:#764ba2; font-weight:600; margin-bottom:4px;'>${(
+            i.category || "general"
+          ).toUpperCase()}</div>
+            <div style='font-size:13px; color:#2c3e50; line-height:1.4;'>${
+              i.insight_text
+            }</div>`;
+          ul.appendChild(li);
+        });
       }
       function renderStaffDashboard(user) {
         document.getElementById("pageTitle").textContent = "Staff Dashboard";
@@ -2668,21 +3169,45 @@
         } catch (err) {
           showAlert("loginAlert", err.message || String(err), "danger");
         }
+        const av = document.getElementById("userAvatar");
+        if (av) (av.style.cursor = "pointer"), (av.onclick = openProfileModal);
       }
 
       async function loadDashboardStats() {
         try {
           const data = await apiRequest("/dashboard/stats");
-          document.getElementById("totalStudents").textContent =
-            data.total_students || 0;
-          document.getElementById("totalTeachers").textContent =
-            data.total_teachers || 0;
-          document.getElementById("totalClasses").textContent =
-            data.total_classes || 0;
-          document.getElementById("pendingFees").textContent =
-            data.pending_fee_students || 0;
+          const s = document.getElementById("totalStudents");
+          const t = document.getElementById("totalTeachers");
+          const c = document.getElementById("totalClasses");
+          const p = document.getElementById("pendingFees");
+          if (s) s.textContent = data.total_students || 0;
+          if (t) t.textContent = data.total_teachers || 0;
+          if (c) c.textContent = data.total_classes || 0;
+          if (p) p.textContent = data.pending_fee_students || 0;
         } catch (err) {
           console.error("stats error", err);
+        }
+      }
+
+      // Lightweight helper to adjust in-page header badges without full reload
+      // Header badges are updated optimistically here. For authoritative
+      // dashboard KPI values we always re-fetch the server stats.
+      function adjustCountBadge(id, delta) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const current =
+          parseInt((el.textContent || "0").replace(/[^0-9-]/g, ""), 10) || 0;
+        const next = Math.max(0, current + (Number(delta) || 0));
+        el.textContent = String(next);
+        // Trigger a background refresh of dashboard stats so tiles show
+        // authoritative server-backed values (avoids client-side drift).
+        try {
+          if (typeof loadDashboardStats === "function") {
+            // Fire-and-forget; swallow any errors
+            loadDashboardStats().catch(() => {});
+          }
+        } catch (e) {
+          // ignore
         }
       }
 
@@ -2816,29 +3341,66 @@
       function renderProfile(data) {
         const canEdit = true;
         document.getElementById("pageTitle").textContent = "My Profile";
-        document.getElementById(
-          "contentArea"
-        ).innerHTML = `<h3><i class="fas fa-user"></i> My Profile</h3><hr><div class="card"><div class="card-body"><div class="row"><div class="col-md-6"><p><strong>Name:</strong> ${
-          data.full_name
-        }</p><p><strong>Email:</strong> ${
-          data.email
-        }</p><p><strong>Role:</strong> <span class="badge bg-primary">${
-          data.role
-        }</span></p><p><strong>Phone:</strong> ${
-          data.phone || "N/A"
-        }</p><p><strong>Status:</strong> ${
-          data.is_active
-            ? '<span class="badge bg-success">Active</span>'
-            : '<span class="badge bg-danger">Inactive</span>'
-        }</p></div></div>${
-          canEdit
-            ? `<hr><h5>Update Profile</h5><form id="updateProfileForm"><div class="row"><div class="col-md-6 mb-3"><label class="form-label">Full Name</label><input class="form-control" name="full_name" value="${
-                data.full_name || ""
-              }" required></div><div class="col-md-6 mb-3"><label class="form-label">Phone</label><input class="form-control" name="phone" value="${
-                data.phone || ""
-              }"></div><div class="col-12"><button class="btn btn-primary">Save</button></div></div></form>`
-            : ""
-        }</div></div>`;
+        document.getElementById("contentArea").innerHTML = `
+          <h3><i class="fas fa-user"></i> My Profile</h3>
+          <hr>
+          <div class="card mb-4"><div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+              <div id="profilePageAvatar" style="width:120px;height:120px;border-radius:50%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:700;background:#eef;color:#555;"></div>
+              <div class="ms-3">
+                <button type="button" class="btn btn-sm btn-primary me-2" onclick="triggerProfileAvatarUpload()"><i class="fas fa-upload"></i> Upload Photo</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeAvatar()"><i class="fas fa-trash"></i> Remove Photo</button>
+                <input type="file" id="profileAvatarFileInput" accept="image/*" class="d-none" />
+                <div id="profileAvatarStatus" class="small text-muted mt-1"></div>
+              </div>
+            </div>
+            <div class="row"><div class="col-md-6">
+              <p><strong>Name:</strong> ${data.full_name}</p>
+              <p><strong>Email:</strong> ${data.email}</p>
+              <p><strong>Role:</strong> <span class="badge bg-primary">${
+                data.role
+              }</span></p>
+              <p><strong>Phone:</strong> ${data.phone || "N/A"}</p>
+              <p><strong>Status:</strong> ${
+                data.is_active
+                  ? '<span class="badge bg-success">Active</span>'
+                  : '<span class="badge bg-danger">Inactive</span>'
+              }</p>
+            </div></div>
+            ${
+              canEdit
+                ? `<hr><h5>Update Profile</h5>
+            <form id="updateProfileForm"><div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Full Name</label>
+                <input class="form-control" name="full_name" value="${
+                  data.full_name || ""
+                }" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label">Phone</label>
+                <input class="form-control" name="phone" value="${
+                  data.phone || ""
+                }">
+              </div>
+              <div class="col-12"><button class="btn btn-primary">Save</button></div>
+            </div></form>`
+                : ""
+            }
+          </div></div>
+        `;
+        const avDiv = document.getElementById("profilePageAvatar");
+        if (avDiv) {
+          const resolved = resolvePhotoUrl(data.photo_url);
+          if (resolved) {
+            avDiv.innerHTML = `<img src="${resolved}" alt="avatar" style="width:100%;height:100%;object-fit:cover;"/>`;
+          } else {
+            const letter = (data.full_name || data.email || "?")
+              .charAt(0)
+              .toUpperCase();
+            avDiv.textContent = letter;
+          }
+        }
         if (canEdit) {
           document
             .getElementById("updateProfileForm")
@@ -3337,44 +3899,169 @@
               <thead>
                 <tr>
                   <th>Name</th>
-                  <th>Code</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${data
-                  .map(
-                    (subject) => `
-                  <tr>
-                    <td>${subject.name}</td>
-                    <td>${subject.code || "N/A"}</td>
-                    <td>${subject.description || "N/A"}</td>
-                  </tr>
-                `
-                  )
-                  .join("")}
-              </tbody>
-            </table>
+        const html = data
+          .map((s) =>
+            <tr class="student-row" data-student-id="${s.id}"><td>${
+          s.full_name || "N/A"
+        }</td><td>${s.admission_no || s.registration_number || "N/A"}</td><td>${
+          s.class_assigned || s.class_name || "N/A"
+        }</td></tr>`.join("");
+
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3><i class="fas fa-users"></i> Students</h3>
+            <div>
+              <button class="btn btn-primary btn-sm" onclick="showAddStudentModal()"><i class="fas fa-plus"></i> Add Student</button>
+            </div>
           </div>
+          <div class="row">
+            <div class="col-md-8">
+              <div class="table-responsive">
+                <table class="table table-striped">
+                  <thead class="table-light"><tr><th>Name</th><th>Admission/Reg No</th><th>Class</th></tr></thead>
+                  <tbody id="studentsTableBody">${html}</tbody>
+                </table>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div id="studentDetailSide" class="card p-3">
+                <div class="text-center text-muted py-5">Select a student to view details</div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // attach click handlers to rows
+        document.querySelectorAll(".student-row").forEach((r) => {
+          r.addEventListener("click", async () => {
+            const id = r.getAttribute("data-student-id");
+            if (!id) return;
+            try {
+              const res = await apiRequest(
+                `/students/${encodeURIComponent(id)}/full`
+              );
+              if (res) renderAdminStudentFull(res);
+            } catch (err) {
+              renderError(err.message || String(err));
+            }
+          });
+        });
+
+        function renderAdminStudentFull(payload) {
+          const student = payload.student || {};
+          const user = payload.user || {};
+          const clazz = payload.class || null;
+          const grades = payload.grades || [];
+          const attendances = payload.attendances || [];
+          const fees = payload.fee_payments || [];
+
+          const photo =
+            resolvePhotoUrl(user.photo_url) ||
+            `${API_BASE}/static/fair-educare/images/avatar-placeholder.png`;
+
+          document.getElementById("studentDetailSide").innerHTML = `
+          <div class="text-center mb-3">
+            <img src="${photo}" alt="profile" style="width:110px;height:110px;border-radius:8px;object-fit:cover;" />
+            <h5 class="mt-2">${
+              user.full_name || student.first_name + " " + student.last_name
+            }</h5>
+            <p class="text-muted small">${user.email || ""}<br/>${
+            user.phone || ""
+          }</p>
+            <div class="d-grid gap-2">
+              <button class="btn btn-sm btn-outline-primary">Edit Profile</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="showMessageModal('${
+                user.id || ""
+              }')">Message</button>
+            </div>
+          </div>
+          <hr>
+          <div>
+            <h6>Details</h6>
+            <p><strong>Admission No:</strong> ${
+              student.admission_no || "N/A"
+            }</p>
+            <p><strong>Class:</strong> ${clazz ? clazz.name : "N/A"}</p>
+            <p><strong>DOB:</strong> ${student.dob || "N/A"}</p>
+            <p><strong>Gender:</strong> ${student.gender || "N/A"}</p>
+            <p><strong>Submissions:</strong> ${
+              payload.submissions_count || 0
+            }</p>
+          </div>
+          <hr>
+          <div>
+            <h6>Recent Grades</h6>
+            <ul class="list-group mb-2">
+              ${
+                grades.length
+                  ? grades
+                      .slice(0, 5)
+                      .map(
+                        (g) =>
+                          `<li class="list-group-item small"><strong>${
+                            g.exam || "Exam"
+                          }</strong>: ${g.marks_obtained} (${
+                            g.grade_letter
+                          })</li>`
+                      )
+                      .join("")
+                  : '<li class="list-group-item small text-muted">No grades</li>'
+              }
+            </ul>
+            <h6>Attendance (recent)</h6>
+            <ul class="list-group mb-2">
+              ${
+                attendances.length
+                  ? attendances
+                      .slice(0, 5)
+                      .map(
+                        (a) =>
+                          `<li class="list-group-item small">${new Date(
+                            a.date
+                          ).toLocaleDateString()} — ${a.status}</li>`
+                      )
+                      .join("")
+                  : '<li class="list-group-item small text-muted">No attendance records</li>'
+              }
+            </ul>
+            <h6>Payments</h6>
+            <ul class="list-group">
+              ${
+                fees.length
+                  ? fees
+                      .slice(0, 5)
+                      .map(
+                        (f) =>
+                          `<li class="list-group-item small">₦${
+                            f.amount_paid
+                          } — ${f.date || ""} — ${f.status || ""}</li>`
+                      )
+                      .join("")
+                  : '<li class="list-group-item small text-muted">No payments</li>'
+              }
+            </ul>
+          </div>
+        `;
+        }
         `;
       }
 
-      // --- Student & Teacher renderers (admin) ---
-      function renderStudents(data) {
-        document.getElementById("pageTitle").textContent = "Students";
-        const content = document.getElementById("contentArea");
-        if (!data || data.length === 0) {
-          content.innerHTML = `
-            <h3><i class="fas fa-users"></i> Students</h3>
-            <hr>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <div></div>
-              <button class="btn btn-primary" onclick="renderAddStudentForm()"><i class="fas fa-user-plus"></i> Add Student</button>
-            </div>
-            <div class="alert alert-info"><i class="fas fa-info-circle"></i> No students found.</div>
-          `;
-          return;
-        }
+      // // --- Student & Teacher renderers (admin) ---
+      // function renderStudents(data) {
+      //   document.getElementById("pageTitle").textContent = "Students";
+      //   const content = document.getElementById("contentArea");
+      //   if (!data || data.length === 0) {
+      //     content.innerHTML = `;
+        //       <h3><i class="fas fa-users"></i> Students</h3>
+        //       <hr>
+        //       <div class="d-flex justify-content-between align-items-center mb-3">
+        //         <div></div>
+        //         <button class="btn btn-primary" onclick="renderAddStudentForm()"><i class="fas fa-user-plus"></i> Add Student</button>
+        //       </div>
+        //       <div class="alert alert-info"><i class="fas fa-info-circle"></i> No students found.</div>
+        //     `;
+        //     return;
+        //   }
 
         content.innerHTML = `
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -3450,12 +4137,30 @@
               if (v !== null && String(v).trim() !== "") payload[k] = v;
             const alertDiv = document.getElementById("addStudentAlert");
             try {
-              await apiRequest("/students", {
+              const created = await apiRequest("/students", {
                 method: "POST",
                 body: JSON.stringify(payload),
               });
-              alertDiv.innerHTML = `<div class="alert alert-success">Student created.</div>`;
-              // refresh list
+              const sid = created && created.id ? created.id : null;
+              try {
+                if (typeof showAlert === "function")
+                  showAlert(
+                    "loginAlert",
+                    "Student created successfully",
+                    "success"
+                  );
+              } catch (_) {}
+              alertDiv.innerHTML = `<div class="alert alert-success d-flex justify-content-between align-items-center">
+                <div><i class="fas fa-check-circle me-1"></i> Student created.</div>
+                ${
+                  sid
+                    ? `<button type="button" class="btn btn-sm btn-outline-light" onclick="openStudentProfile('${sid}')"><i class='fas fa-user'></i> View Profile</button>`
+                    : ""
+                }
+              </div>`;
+              // Bump in-page Students header badge (triggers authoritative refresh)
+              adjustCountBadge("studentsCountBadge", 1);
+              // Refresh students list view without reloading the page
               endpointHandlers.students();
             } catch (err) {
               alertDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -3557,11 +4262,14 @@
               payload.experience_years = Number(payload.experience_years);
             const alertDiv = document.getElementById("addTeacherAlert");
             try {
-              await apiRequest("/teachers", {
+              const created = await apiRequest("/teachers", {
                 method: "POST",
                 body: JSON.stringify(payload),
               });
               alertDiv.innerHTML = `<div class="alert alert-success">Teacher created.</div>`;
+              // Bump in-page Teachers header badge (triggers authoritative refresh)
+              adjustCountBadge("teachersCountBadge", 1);
+              // Refresh list
               endpointHandlers.teachers();
             } catch (err) {
               alertDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
@@ -4417,17 +5125,21 @@
                 )
                 .join("")
             : '<div class="alert alert-info">No upcoming birthdays.</div>';
+
+        const isAdmin = (appState.user?.role || "").toLowerCase() === "admin";
+        const pendingSection = isAdmin
+          ? '<div id="pendingMessages" class="mb-3"></div>'
+          : "";
+
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-newspaper"></i> News Feed</h3>
-          <hr>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-newspaper"></i> News Feed</h3>
+            <button class="btn btn-primary" onclick="showPostMessageModal()"><i class="fas fa-plus"></i> Post Message</button>
+          </div>
           <div class="row">
             <div class="col-md-8">
-              <div class="card mb-3">
-                <div class="card-header bg-primary text-white"><i class="fas fa-megaphone"></i> Announcements</div>
-                <div class="card-body">
-                  <p>No announcements at the moment.</p>
-                </div>
-              </div>
+              ${pendingSection}
+              <div id="publicMessagesList" class="vstack gap-2 mb-3"></div>
             </div>
             <div class="col-md-4">
               <div class="card">
@@ -4439,6 +5151,49 @@
             </div>
           </div>
         `;
+
+        // load approved messages
+        (async () => {
+          try {
+            const msgs = await apiRequest("/messages");
+            const list = document.getElementById("publicMessagesList");
+            list.innerHTML =
+              (msgs || [])
+                .map((m) => {
+                  const u = m.user || {};
+                  const photo =
+                    resolvePhotoUrl(u.photo_url) ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      u.full_name || "User"
+                    )}&background=6366f1&color=fff&size=64`;
+                  const dt = m.created_at
+                    ? new Date(m.created_at).toLocaleString()
+                    : "";
+                  return `
+                <div class="card">
+                  <div class="card-body d-flex">
+                    <img src="${photo}" alt="avatar" class="rounded-circle me-3" width="48" height="48"/>
+                    <div>
+                      <div class="fw-semibold">${
+                        u.full_name || "User"
+                      } <small class="text-muted">${dt}</small></div>
+                      <div>${m.content || ""}</div>
+                    </div>
+                  </div>
+                </div>`;
+                })
+                .join("") || '<div class="text-muted">No messages yet.</div>';
+          } catch (e) {
+            const list = document.getElementById("publicMessagesList");
+            if (list)
+              list.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+          }
+        })();
+
+        // load pending messages if admin
+        if (isAdmin) {
+          loadPendingMessages();
+        }
       }
 
       // ADMIN Renderers
@@ -4471,63 +5226,505 @@
       }
 
       function renderAdminMailbox() {
+        document.getElementById("pageTitle").textContent = "Mailbox";
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-envelope"></i> Mailbox</h3>
-          <hr>
-          <div class="alert alert-info"><i class="fas fa-inbox"></i> You have 0 unread messages.</div>
-          <div class="card">
-            <div class="table-responsive">
-              <table class="table table-hover mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>From</th>
-                    <th>Subject</th>
-                    <th>Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td colspan="4" class="text-center text-muted py-3">No messages</td>
-                  </tr>
-                </tbody>
-              </table>
+          <div id="mailboxRoot">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h3 class="mb-0"><i class="fas fa-envelope"></i> Mailbox</h3>
+              <div class="btn-group" role="group" aria-label="Mailbox tabs">
+                <button id="btnInboxTab" class="btn btn-sm btn-outline-primary active"><i class="fas fa-inbox"></i> Inbox <span id="unreadBadge" class="badge bg-danger ms-1">0</span></button>
+                <button id="btnSentTab" class="btn btn-sm btn-outline-secondary"><i class="fas fa-paper-plane"></i> Sent</button>
+              </div>
             </div>
-          </div>
-        `;
-      }
-
-      function renderAdminNewsFeed() {
-        document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-newspaper"></i> News Feed Management</h3>
-          <hr>
-          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Post News</button>
-          <div class="card">
-            <div class="card-body text-center text-muted py-5">
-              <i class="fas fa-newspaper fa-3x mb-3"></i>
-              <p>No news posts yet.</p>
+            <div class="card mb-3">
+              <div class="card-body">
+                <form id="composeForm">
+                  <input type="hidden" name="thread_id" id="composeThread" />
+                  <div class="row g-2 align-items-center">
+                    <div class="col-md-4"><input class="form-control" name="recipient_email" placeholder="To (email)" required></div>
+                    <div class="col-md-5"><input class="form-control" name="subject" placeholder="Subject" required></div>
+                    <div class="col-md-3 text-end"><button class="btn btn-primary"><i class="fas fa-paper-plane"></i> Send</button></div>
+                    <div class="col-12 mt-2"><textarea class="form-control" rows="3" name="body" placeholder="Write your message..." required></textarea></div>
+                  </div>
+                </form>
+                <div id="composeStatus" class="small mt-2 text-muted"></div>
+              </div>
             </div>
-          </div>
-        `;
-      }
+            <div id="mailboxStatus" class="alert alert-info d-none"></div>
+            <div class="card">
+              <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th style="width:28%">From</th>
+                      <th>Subject</th>
+                      <th style="width:22%">Date</th>
+                      <th style="width:90px">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mailboxTableBody">
+                    <tr><td colspan="4" class="text-center text-muted py-3">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-      function renderAdminEClassroom() {
-        document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-video"></i> E-Classroom Management</h3>
-          <hr>
-          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create Class</button>
-          <div class="row">
-            <div class="col-md-4 mb-3">
-              <div class="card">
-                <div class="card-body">
-                  <h6 class="card-title">Class 1A Mathematics</h6>
-                  <p class="card-text text-muted small">Active sessions: 3</p>
-                  <button class="btn btn-sm btn-outline-primary">Manage</button>
+            <div class="card mt-3 d-none" id="mailView">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <h5 id="mailSubject" class="mb-0"></h5>
+                  <div>
+                    <button class="btn btn-sm btn-outline-primary me-1" id="replyBtn"><i class="fas fa-reply"></i> Reply</button>
+                    <button class="btn btn-sm btn-outline-secondary me-1" id="forwardBtn"><i class="fas fa-share"></i> Forward</button>
+                    <button class="btn btn-sm btn-secondary" id="closeMailView"><i class="fas fa-times"></i> Close</button>
+                  </div>
+                </div>
+                <div class="text-muted small mb-2"><span id="mailFrom"></span> • <span id="mailDate"></span></div>
+                <div id="mailBody" style="white-space:pre-wrap"></div>
+                <hr/>
+                <div id="mailThread">
+                  <div class="text-muted small">Conversation</div>
+                  <div id="mailThreadList" class="mt-2"></div>
                 </div>
               </div>
             </div>
           </div>
         `;
+
+        // Polling management scoped to mailbox view
+        if (appState.mailTimer) {
+          try {
+            clearInterval(appState.mailTimer);
+          } catch (_) {}
+          appState.mailTimer = null;
+        }
+
+        let activeTab = "inbox"; // or 'sent'
+
+        async function loadInbox(unreadOnly = false) {
+          const tBody = document.getElementById("mailboxTableBody");
+          const status = document.getElementById("mailboxStatus");
+          try {
+            const rows = await apiRequest(
+              `/mail/inbox?unread_only=${unreadOnly}`
+            );
+            const unread = (rows || []).filter((r) => !r.is_read).length;
+            const badge = document.getElementById("unreadBadge");
+            if (badge) badge.textContent = String(unread);
+            if (!rows || rows.length === 0) {
+              tBody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No messages</td></tr>`;
+            } else {
+              tBody.innerHTML = rows
+                .map((r) => {
+                  const dt = r.created_at
+                    ? new Date(r.created_at).toLocaleString()
+                    : "";
+                  const bold = r.is_read ? "" : "fw-semibold";
+                  return `<tr>
+                  <td class="${bold}">${r.sender_email}</td>
+                  <td class="${bold}">${r.subject || "(no subject)"}</td>
+                  <td>${dt}</td>
+                  <td><button class="btn btn-sm btn-outline-primary" data-view-id="${
+                    r.id
+                  }"><i class="fas fa-eye"></i></button></td>
+                </tr>`;
+                })
+                .join("");
+            }
+            status.classList.add("d-none");
+          } catch (e) {
+            status.textContent = e.message || String(e);
+            status.classList.remove("d-none");
+          }
+        }
+
+        async function loadSent() {
+          const tBody = document.getElementById("mailboxTableBody");
+          const status = document.getElementById("mailboxStatus");
+          try {
+            const rows = await apiRequest(`/mail/sent`);
+            if (!rows || rows.length === 0) {
+              tBody.innerHTML = `<tr><td colspan=\"4\" class=\"text-center text-muted py-3\">No sent messages</td></tr>`;
+            } else {
+              tBody.innerHTML = rows
+                .map((r) => {
+                  const dt = r.created_at
+                    ? new Date(r.created_at).toLocaleString()
+                    : "";
+                  return `<tr>
+                  <td>${appState.user?.email || "Me"}</td>
+                  <td>${r.subject || "(no subject)"}</td>
+                  <td>${dt}</td>
+                  <td><button class="btn btn-sm btn-outline-primary" data-view-id="${
+                    r.id
+                  }"><i class="fas fa-eye"></i></button></td>
+                </tr>`;
+                })
+                .join("");
+            }
+            status.classList.add("d-none");
+          } catch (e) {
+            status.textContent = e.message || String(e);
+            status.classList.remove("d-none");
+          }
+        }
+
+        async function openMessage(id) {
+          const view = document.getElementById("mailView");
+          const subj = document.getElementById("mailSubject");
+          const from = document.getElementById("mailFrom");
+          const when = document.getElementById("mailDate");
+          const body = document.getElementById("mailBody");
+          try {
+            const msg = await apiRequest(`/mail/${encodeURIComponent(id)}`);
+            subj.textContent = msg.subject || "(no subject)";
+            from.textContent = `From: ${msg.sender_email}`;
+            when.textContent = msg.created_at
+              ? new Date(msg.created_at).toLocaleString()
+              : "";
+            body.textContent = msg.body || "";
+            view.classList.remove("d-none");
+            // Load thread messages
+            (async () => {
+              try {
+                const threadKey = msg.thread_id || msg.id;
+                const listEl = document.getElementById("mailThreadList");
+                if (listEl)
+                  listEl.innerHTML =
+                    '<div class="text-muted small">Loading conversation...</div>';
+                // Fetch inbox and sent summaries, then filter to thread
+                const [inboxRows, sentRows] = await Promise.all([
+                  apiRequest(`/mail/inbox?unread_only=false`),
+                  apiRequest(`/mail/sent`),
+                ]);
+                const summaries = [...(inboxRows || []), ...(sentRows || [])];
+                const related = summaries.filter(
+                  (r) => (r.thread_id || r.id) === threadKey
+                );
+                // Ensure the currently opened message is included
+                if (!related.find((r) => r.id === msg.id))
+                  related.push({ id: msg.id, created_at: msg.created_at });
+                // Sort by time ascending
+                related.sort(
+                  (a, b) =>
+                    new Date(a.created_at || 0) - new Date(b.created_at || 0)
+                );
+                // Fetch full bodies
+                const fullMsgs = [];
+                for (const r of related) {
+                  try {
+                    fullMsgs.push(
+                      await apiRequest(`/mail/${encodeURIComponent(r.id)}`)
+                    );
+                  } catch (_) {}
+                }
+                if (listEl) {
+                  listEl.innerHTML =
+                    (fullMsgs || [])
+                      .map((m) => {
+                        const me = (appState.user?.email || "").toLowerCase();
+                        const byMe =
+                          (m.sender_email || "").toLowerCase() === me;
+                        const dt = m.created_at
+                          ? new Date(m.created_at).toLocaleString()
+                          : "";
+                        return `<div class="border rounded p-2 mb-2 ${
+                          byMe ? "bg-light" : ""
+                        }"><div class="small text-muted">${
+                          byMe ? "Me" : m.sender_email
+                        } • ${dt}</div><div style="white-space:pre-wrap">${(
+                          m.body || ""
+                        ).replace(
+                          /[&<>]/g,
+                          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])
+                        )}</div></div>`;
+                      })
+                      .join("") ||
+                    '<div class="text-muted small">No conversation history</div>';
+                }
+                // Wire reply/forward buttons
+                const replyBtn = document.getElementById("replyBtn");
+                const fwdBtn = document.getElementById("forwardBtn");
+                if (replyBtn)
+                  replyBtn.onclick = () => {
+                    const subjLine = (msg.subject || "").startsWith("Re:")
+                      ? msg.subject
+                      : `Re: ${msg.subject || ""}`;
+                    const quote = `\n\nOn ${new Date(
+                      msg.created_at
+                    ).toLocaleString()}, ${msg.sender_email} wrote:\n${
+                      msg.body || ""
+                    }`;
+                    const thread = msg.thread_id || msg.id;
+                    prefillCompose(msg.sender_email, subjLine, quote, thread);
+                  };
+                if (fwdBtn)
+                  fwdBtn.onclick = () => {
+                    const subjLine = (msg.subject || "").startsWith("Fwd:")
+                      ? msg.subject
+                      : `Fwd: ${msg.subject || ""}`;
+                    const quote = `\n\n---------- Forwarded message ---------\nFrom: ${
+                      msg.sender_email
+                    }\nDate: ${new Date(
+                      msg.created_at
+                    ).toLocaleString()}\nSubject: ${msg.subject || ""}\n\n${
+                      msg.body || ""
+                    }`;
+                    const thread = msg.thread_id || msg.id;
+                    prefillCompose("", subjLine, quote, thread);
+                  };
+              } catch (_) {}
+            })();
+            // Mark read if we are the recipient
+            if (
+              msg.recipient_email &&
+              msg.recipient_email === appState.user?.email &&
+              !msg.is_read
+            ) {
+              try {
+                await apiRequest(`/mail/${encodeURIComponent(id)}/read`, {
+                  method: "POST",
+                });
+              } catch (_) {}
+              // Refresh inbox counts
+              if (activeTab === "inbox") loadInbox(false);
+            }
+          } catch (e) {
+            showAlert("loginAlert", e.message || String(e));
+          }
+        }
+
+        // Wire up events
+        document.getElementById("btnInboxTab").addEventListener("click", () => {
+          activeTab = "inbox";
+          document.getElementById("btnInboxTab").classList.add("active");
+          document.getElementById("btnSentTab").classList.remove("active");
+          loadInbox(false);
+        });
+        document.getElementById("btnSentTab").addEventListener("click", () => {
+          activeTab = "sent";
+          document.getElementById("btnSentTab").classList.add("active");
+          document.getElementById("btnInboxTab").classList.remove("active");
+          loadSent();
+        });
+        document
+          .getElementById("closeMailView")
+          .addEventListener("click", () => {
+            document.getElementById("mailView").classList.add("d-none");
+          });
+        // Delegate click for view buttons
+        document
+          .getElementById("contentArea")
+          .addEventListener("click", (e) => {
+            const btn = e.target.closest("[data-view-id]");
+            if (btn) openMessage(btn.getAttribute("data-view-id"));
+          });
+
+        // Compose form submit handler
+        document
+          .getElementById("composeForm")
+          .addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const fd = new FormData(e.target);
+            const payload = {
+              recipient_email: String(fd.get("recipient_email") || "").trim(),
+              subject: String(fd.get("subject") || "").trim(),
+              body: String(fd.get("body") || "").trim(),
+            };
+            const thread = String(fd.get("thread_id") || "").trim();
+            if (thread) payload.thread_id = thread;
+            const status = document.getElementById("composeStatus");
+            status.textContent = "Sending...";
+            try {
+              await apiRequest("/mail/send", {
+                method: "POST",
+                body: JSON.stringify(payload),
+              });
+              status.textContent = "Sent ✓";
+              e.target.reset();
+              // Clear thread binding after send
+              const th = document.getElementById("composeThread");
+              if (th) th.value = "";
+              // Switch to Sent tab and refresh
+              document.getElementById("btnSentTab").click();
+            } catch (err) {
+              status.textContent = err.message || String(err);
+            }
+          });
+
+        // Prefill compose utility
+        function prefillCompose(recipient, subject, body, threadId) {
+          const form = document.getElementById("composeForm");
+          if (!form) return;
+          form.recipient_email.value = recipient || "";
+          form.subject.value = subject || "";
+          form.body.value = body || "";
+          const th = document.getElementById("composeThread");
+          if (th) th.value = threadId || "";
+          form.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+
+        // Initial load
+        loadInbox(false);
+        // Start polling unread count while view exists
+        appState.mailTimer = setInterval(() => {
+          if (!document.getElementById("mailboxRoot")) {
+            clearInterval(appState.mailTimer);
+            appState.mailTimer = null;
+            return;
+          }
+          // Only refresh inbox (unread) for badge
+          (async () => {
+            try {
+              const rows = await apiRequest(`/mail/inbox?unread_only=true`);
+              const unread = (rows || []).filter((r) => !r.is_read).length;
+              const badge = document.getElementById("unreadBadge");
+              if (badge) badge.textContent = String(unread);
+            } catch (_) {}
+          })();
+        }, 10000);
+      }
+
+      function renderAdminNewsFeed() {
+        document.getElementById("pageTitle").textContent = "News Feed";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-newspaper"></i> News Feed</h3>
+            <div>
+              <button class="btn btn-outline-secondary me-2" onclick="loadPendingMessages()" title="Pending messages"><i class="fas fa-hourglass-half"></i></button>
+              <button class="btn btn-primary" onclick="showPostMessageModal()"><i class="fas fa-plus"></i> Post Message</button>
+            </div>
+          </div>
+          <div id="pendingMessages" class="mb-3"></div>
+          <div id="messagesList" class="vstack gap-2"></div>
+        `;
+        (async () => {
+          try {
+            const msgs = await apiRequest("/messages");
+            const list = document.getElementById("messagesList");
+            list.innerHTML =
+              (msgs || [])
+                .map((m) => {
+                  const u = m.user || {};
+                  const photo =
+                    resolvePhotoUrl(u.photo_url) ||
+                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                      u.full_name || "User"
+                    )}&background=6366f1&color=fff&size=64`;
+                  const dt = m.created_at
+                    ? new Date(m.created_at).toLocaleString()
+                    : "";
+                  return `
+                <div class="card">
+                  <div class="card-body d-flex">
+                    <img src="${photo}" alt="avatar" class="rounded-circle me-3" width="48" height="48"/>
+                    <div>
+                      <div class="fw-semibold">${
+                        u.full_name || "User"
+                      } <small class="text-muted">${dt}</small></div>
+                      <div>${m.content || ""}</div>
+                    </div>
+                  </div>
+                </div>`;
+                })
+                .join("") || '<div class="text-muted">No messages yet.</div>';
+            // If user is admin, load pending messages area
+            if ((appState.user?.role || "").toLowerCase() === "admin")
+              loadPendingMessages();
+          } catch (e) {
+            renderError("Failed to load messages");
+          }
+        })();
+      }
+
+      function renderAdminPendingMessages() {
+        document.getElementById("pageTitle").textContent = "Pending Messages";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-clock"></i> Pending Messages</h3>
+            <button class="btn btn-outline-secondary" onclick="loadPendingMessagesForAdminPage()"><i class="fas fa-refresh"></i> Refresh</button>
+          </div>
+          <div id="pendingMessagesList" class="vstack gap-2"></div>
+        `;
+        loadPendingMessagesForAdminPage();
+      }
+
+      function loadPendingMessagesForAdminPage() {
+        const container = document.getElementById("pendingMessagesList");
+        if (!container) return;
+        container.innerHTML =
+          '<div class="text-center py-4"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted">Loading pending messages...</div></div>';
+        (async () => {
+          try {
+            // Allow a saved admin override token to be used when current user is not admin
+            const adminOverride = localStorage.getItem("adminOverrideToken");
+            if (
+              (appState.user?.role || "").toLowerCase() !== "admin" &&
+              !adminOverride
+            ) {
+              container.innerHTML = `<div class="alert alert-warning">Admin access required to view pending messages. <button class="btn btn-sm btn-primary" onclick="promptAdminToken()">Use admin token</button></div>`;
+              return;
+            }
+            const headers = adminOverride
+              ? { Authorization: `Bearer ${adminOverride}` }
+              : undefined;
+            const pending = await apiRequest("/messages/pending", { headers });
+            if (!pending || !pending.length) {
+              container.innerHTML =
+                '<div class="alert alert-info">No pending messages.</div>';
+              return;
+            }
+            container.innerHTML = pending
+              .map((m) => {
+                const u = m.user || {};
+                const photo =
+                  resolvePhotoUrl(u.photo_url) ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    u.full_name || "User"
+                  )}&background=6366f1&color=fff&size=64`;
+                const dt = m.created_at
+                  ? new Date(m.created_at).toLocaleString()
+                  : "";
+                return `
+                <div class="card">
+                  <div class="card-body d-flex">
+                    <img src="${photo}" alt="avatar" class="rounded-circle me-3" width="48" height="48"/>
+                    <div class="flex-grow-1">
+                      <div class="fw-semibold">${
+                        u.full_name || "User"
+                      } <small class="text-muted">${dt}</small></div>
+                      <div>${m.content || ""}</div>
+                    </div>
+                    <div class="ms-2 text-end">
+                      <button class="btn btn-sm btn-success mb-1" onclick="approveMessage('${
+                        m.id
+                      }')">Approve</button><br/>
+                      <button class="btn btn-sm btn-danger" onclick="removeMessage('${
+                        m.id
+                      }')">Delete</button>
+                    </div>
+                  </div>
+                </div>`;
+              })
+              .join("");
+          } catch (e) {
+            container.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+          }
+        })();
+      }
+
+      function renderAdminEClassroom() {
+        document.getElementById("pageTitle").textContent = "E-Classroom";
+        document.getElementById("contentArea").innerHTML = `
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-video"></i> E-Classroom</h3>
+            <button class="btn btn-primary" onclick="showCreateClassroomModal()"><i class="fas fa-plus"></i> Create Classroom</button>
+          </div>
+          <div class="row g-3" id="classroomsList">
+            <div class="col-12 text-muted">Loading classrooms...</div>
+          </div>
+        `;
+        loadVirtualClassrooms();
       }
 
       function renderAdminLessonPlanner() {
@@ -4571,29 +5768,369 @@
       }
 
       function renderAdminCBT() {
+        document.getElementById("pageTitle").textContent = "CBT";
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-laptop"></i> CBT (Computer Based Test)</h3>
-          <hr>
-          <button class="btn btn-primary mb-3"><i class="fas fa-plus"></i> Create CBT</button>
-          <div class="row">
-            <div class="col-md-6 mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-laptop"></i> CBT</h3>
+            <button class="btn btn-primary" onclick="showCreateCBTModal()"><i class="fas fa-plus"></i> Create CBT</button>
+          </div>
+          <div class="row g-3">
+            <div class="col-lg-6">
               <div class="card">
                 <div class="card-header bg-info text-white">Active Tests</div>
                 <div class="card-body">
-                  <p class="text-muted">No active CBT tests at the moment.</p>
+                  <div class="text-muted">No active CBT tests at the moment.</div>
                 </div>
               </div>
             </div>
-            <div class="col-md-6 mb-3">
+            <div class="col-lg-6">
               <div class="card">
                 <div class="card-header bg-success text-white">Completed Tests</div>
                 <div class="card-body">
-                  <p class="text-muted">No completed tests.</p>
+                  <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                      <thead class="table-light"><tr><th>User</th><th>Test ID</th><th>Score</th><th>Time</th><th>Date</th></tr></thead>
+                      <tbody id="completedTestsBody">
+                        <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         `;
+        loadCompletedCBTs();
+      }
+
+      // Admin helpers: News Feed, E-Classroom, CBT
+      function showPostMessageModal() {
+        let modalEl = document.getElementById("postMessageModal");
+        if (!modalEl) {
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = `
+            <div class="modal fade" id="postMessageModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-md modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Post Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div id="postMsgAlert"></div>
+                    <textarea id="postMsgContent" class="form-control" rows="4" placeholder="What's new?"></textarea>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="postMsgBtn">Post</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          document.body.appendChild(wrapper.firstElementChild);
+          modalEl = document.getElementById("postMessageModal");
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        const btn = document.getElementById("postMsgBtn");
+        btn.onclick = async () => {
+          const content = (
+            document.getElementById("postMsgContent").value || ""
+          ).trim();
+          const alertDiv = document.getElementById("postMsgAlert");
+          alertDiv.innerHTML = "";
+          if (!content) {
+            alertDiv.innerHTML =
+              '<div class="alert alert-warning">Enter a message.</div>';
+            return;
+          }
+          try {
+            const response = await apiRequest("/messages", {
+              method: "POST",
+              body: JSON.stringify({ content }),
+            });
+            modal.hide();
+            if (response.approved) {
+              showAlert(
+                "loginAlert",
+                "Message posted successfully!",
+                "success"
+              );
+            } else {
+              showAlert(
+                "loginAlert",
+                "Your message has been sent to pending messages for admin approval. Please wait while it is reviewed.",
+                "info"
+              );
+            }
+            // Reload the current view
+            if (
+              typeof renderAdminNewsFeed === "function" &&
+              (appState.user?.role || "").toLowerCase() === "admin"
+            ) {
+              renderAdminNewsFeed();
+            } else if (typeof renderNewsFeedWithBirthdays === "function") {
+              renderNewsFeedWithBirthdays();
+            }
+          } catch (e) {
+            alertDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+          }
+        };
+      }
+
+      async function loadPendingMessages() {
+        const container = document.getElementById("pendingMessages");
+        if (!container) return;
+        container.innerHTML =
+          '<div class="text-muted">Loading pending messages...</div>';
+        try {
+          const adminOverride = localStorage.getItem("adminOverrideToken");
+          if (
+            (appState.user?.role || "").toLowerCase() !== "admin" &&
+            !adminOverride
+          ) {
+            container.innerHTML = "";
+            return;
+          }
+          const headers = adminOverride
+            ? { Authorization: `Bearer ${adminOverride}` }
+            : undefined;
+          const pending = await apiRequest("/messages/pending", { headers });
+          if (!pending || !pending.length) {
+            container.innerHTML = "";
+            return;
+          }
+          container.innerHTML = `<div class="card mb-3"><div class="card-body"><h6 class="mb-2">Pending Messages</h6>${pending
+            .map((m) => {
+              const u = m.user || {};
+              const photo =
+                resolvePhotoUrl(u.photo_url) ||
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                  u.full_name || "User"
+                )}&background=6366f1&color=fff&size=48`;
+              const dt = m.created_at
+                ? new Date(m.created_at).toLocaleString()
+                : "";
+              return `<div class="d-flex align-items-start mb-2"><img src="${photo}" class="rounded-circle me-2" width="40" height="40"/><div class="flex-grow-1"><div class="fw-semibold">${
+                u.full_name || "User"
+              } <small class="text-muted">${dt}</small></div><div>${
+                m.content
+              }</div></div><div class="ms-2 text-end"><button class="btn btn-sm btn-success mb-1" onclick="approveMessage('${
+                m.id
+              }')">Approve</button><br/><button class="btn btn-sm btn-danger" onclick="removeMessage('${
+                m.id
+              }')">Delete</button></div></div>`;
+            })
+            .join("")}</div></div>`;
+        } catch (e) {
+          container.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+        }
+      }
+
+      async function approveMessage(id) {
+        try {
+          const adminOverride = localStorage.getItem("adminOverrideToken");
+          const opts = { method: "POST" };
+          if (adminOverride)
+            opts.headers = { Authorization: `Bearer ${adminOverride}` };
+          await apiRequest(`/messages/${encodeURIComponent(id)}/approve`, opts);
+          showAlert("loginAlert", "Message approved", "success");
+          renderAdminNewsFeed();
+        } catch (e) {
+          showAlert("loginAlert", e.message || String(e));
+        }
+      }
+
+      async function removeMessage(id) {
+        if (!confirm("Delete this message?")) return;
+        try {
+          const adminOverride = localStorage.getItem("adminOverrideToken");
+          const opts = { method: "DELETE" };
+          if (adminOverride)
+            opts.headers = { Authorization: `Bearer ${adminOverride}` };
+          await apiRequest(`/messages/${encodeURIComponent(id)}`, opts);
+          showAlert("loginAlert", "Message deleted", "success");
+          renderAdminNewsFeed();
+        } catch (e) {
+          showAlert("loginAlert", e.message || String(e));
+        }
+      }
+
+      async function loadVirtualClassrooms() {
+        const container = document.getElementById("classroomsList");
+        try {
+          const res = await apiRequest("/classrooms");
+          const list = Array.isArray(res) ? res : res.items || [];
+          if (!list.length) {
+            container.innerHTML =
+              '<div class="col-12 text-muted">No classrooms yet.</div>';
+            return;
+          }
+          container.innerHTML = list
+            .map(
+              (c) => `
+            <div class="col-md-4">
+              <div class="card h-100">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <h6 class="card-title mb-0">${c.name || "Classroom"}</h6>
+                    <span class="badge bg-primary">${
+                      c.platform || "Link"
+                    }</span>
+                  </div>
+                  <div class="small text-muted mb-2">Created by: ${
+                    c.created_by_name || c.created_by || ""
+                  }</div>
+                  <a class="btn btn-sm btn-outline-primary" target="_blank" href="${
+                    c.platform_link || "#"
+                  }"><i class="fas fa-external-link"></i> Join</a>
+                </div>
+              </div>
+            </div>`
+            )
+            .join("");
+        } catch (e) {
+          container.innerHTML = `<div class="col-12 text-danger">${e.message}</div>`;
+        }
+      }
+
+      function showCreateClassroomModal() {
+        let modalEl = document.getElementById("createClassroomModal");
+        if (!modalEl) {
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = `
+            <div class="modal fade" id="createClassroomModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-md modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header">
+                    <h5 class="modal-title">Create Classroom</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                  </div>
+                  <div class="modal-body">
+                    <div id="createClassAlert"></div>
+                    <div class="mb-3"><label class="form-label">Class Name</label><input id="vcName" class="form-control" placeholder="e.g. Grade 1A Mathematics"></div>
+                    <div class="mb-3"><label class="form-label">Platform</label>
+                      <select id="vcPlatform" class="form-select">
+                        <option value="Zoom">Zoom</option>
+                        <option value="Google Meet">Google Meet</option>
+                        <option value="Microsoft Teams">Microsoft Teams</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="createClassBtn">Create</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          document.body.appendChild(wrapper.firstElementChild);
+          modalEl = document.getElementById("createClassroomModal");
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        document.getElementById("createClassBtn").onclick = async () => {
+          const name = (document.getElementById("vcName").value || "").trim();
+          const platform = document.getElementById("vcPlatform").value;
+          const alertDiv = document.getElementById("createClassAlert");
+          alertDiv.innerHTML = "";
+          if (!name) {
+            alertDiv.innerHTML =
+              '<div class="alert alert-warning">Enter a class name.</div>';
+            return;
+          }
+          try {
+            await apiRequest("/classrooms", {
+              method: "POST",
+              body: JSON.stringify({ name, platform }),
+            });
+            modal.hide();
+            loadVirtualClassrooms();
+          } catch (e) {
+            alertDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+          }
+        };
+      }
+
+      async function loadCompletedCBTs() {
+        const tbody = document.getElementById("completedTestsBody");
+        if (!tbody) return;
+        try {
+          const res = await apiRequest("/cbt/completed");
+          const list = Array.isArray(res) ? res : res.items || [];
+          tbody.innerHTML =
+            list
+              .map(
+                (r) => `
+            <tr>
+              <td>${r.user?.full_name || r.user_name || "User"}</td>
+              <td>${r.test_id || "-"}</td>
+              <td>${r.score != null ? r.score : "-"}</td>
+              <td>${r.time_taken || "-"}</td>
+              <td>${
+                r.created_at ? new Date(r.created_at).toLocaleString() : ""
+              }</td>
+            </tr>
+          `
+              )
+              .join("") ||
+            '<tr><td colspan="5" class="text-center text-muted">No submissions</td></tr>';
+        } catch (e) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-danger">${e.message}</td></tr>`;
+        }
+      }
+
+      // Called by dashboard.html window via window.opener
+      window.recordCBTCompletion = async function (submission) {
+        try {
+          await apiRequest("/cbt/submit", {
+            method: "POST",
+            body: JSON.stringify(submission),
+          });
+          showAlert(
+            "loginAlert",
+            `CBT submitted successfully for ${submission.test_id}.`,
+            "success"
+          );
+          loadCompletedCBTs();
+        } catch (e) {
+          showAlert("loginAlert", e.message || "Failed to record CBT");
+        }
+      };
+
+      function showCreateCBTModal() {
+        let modalEl = document.getElementById("createCBTModal");
+        if (!modalEl) {
+          const wrapper = document.createElement("div");
+          wrapper.innerHTML = `
+            <div class="modal fade" id="createCBTModal" tabindex="-1" aria-hidden="true">
+              <div class="modal-dialog modal-md modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header"><h5 class="modal-title">Create/Start CBT</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                  <div class="modal-body">
+                    <p>This demo opens the CBT interface in a new window.</p>
+                    <div class="mb-3"><label class="form-label">Test ID</label><input id="cbtTestId" class="form-control" placeholder="e.g. MATH-101"/></div>
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" id="startCBTBtn"><i class="fas fa-play"></i> Start CBT</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+          document.body.appendChild(wrapper.firstElementChild);
+          modalEl = document.getElementById("createCBTModal");
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+        document.getElementById("startCBTBtn").onclick = () => {
+          const testId = (
+            document.getElementById("cbtTestId").value || "DEMO-TEST"
+          ).trim();
+          const url = `/dashboard.html?testId=${encodeURIComponent(testId)}`;
+          window.open(url, "CBTWindow", "width=1024,height=768");
+          modal.hide();
+        };
       }
 
       function renderAdminClasses(data) {
@@ -4727,29 +6264,34 @@
       function renderAdminTeachers(data) {
         document.getElementById("pageTitle").textContent =
           "Teachers Management";
-        if (!data || data.length === 0) {
-          document.getElementById(
-            "contentArea"
-          ).innerHTML = `<div class="alert alert-info">No teachers found.</div>`;
-          return;
-        }
-        const html = data
-          .map(
-            (t) =>
-              `<tr><td>${t.full_name || "N/A"}</td><td>${
-                t.email || "N/A"
-              }</td><td><span class="badge bg-primary">${
-                t.department || "N/A"
-              }</span></td></tr>`
-          )
+        const count = (data || []).length;
+        const html = (data || [])
+          .map((t) => {
+            const id = t?.id || "";
+            return `<tr data-teacher-id="${id}"><td>${
+              t.full_name || "N/A"
+            }</td><td>${
+              t.email || "N/A"
+            }</td><td><span class="badge bg-primary">${
+              t.department || "N/A"
+            }</span></td><td>
+              <button class="btn btn-sm btn-outline-secondary me-1" data-edit-teacher-id="${id}" title="Edit"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-outline-danger" data-del-teacher-id="${id}" title="Delete"><i class="fas fa-trash"></i></button>
+            </td></tr>`;
+          })
           .join("");
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-chalkboard-teacher"></i> Teachers</h3>
-          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Teacher</button>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-chalkboard-teacher"></i> Teachers <span id="teachersCountBadge" class="badge bg-primary ms-2">${count}</span></h3>
+            <button class="btn btn-primary btn-sm" onclick="renderAddTeacherForm()"><i class="fas fa-user-plus"></i> Add Teacher</button>
+          </div>
           <div class="table-responsive">
             <table class="table table-striped">
-              <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Department</th></tr></thead>
-              <tbody>${html}</tbody>
+              <thead class="table-light"><tr><th>Name</th><th>Email</th><th>Department</th><th style="width:110px">Actions</th></tr></thead>
+              <tbody id="teachersTableBody">${
+                html ||
+                '<tr><td colspan="4" class="text-center text-muted">No teachers found.</td></tr>'
+              }</tbody>
             </table>
           </div>
         `;
@@ -4776,32 +6318,130 @@
       }
 
       function renderAdminStudents(data) {
-        document.getElementById("pageTitle").textContent =
-          "Students Management";
-        if (!data || data.length === 0) {
-          document.getElementById(
-            "contentArea"
-          ).innerHTML = `<div class="alert alert-info">No students found.</div>`;
-          return;
-        }
-        const html = data
+        document.getElementById("pageTitle").textContent = "Students";
+        const listHtml = (data || [])
           .map(
-            (s) =>
-              `<tr><td>${s.full_name || "N/A"}</td><td>${
-                s.registration_number || "N/A"
-              }</td><td>${s.class_assigned || "N/A"}</td></tr>`
+            (s) => `
+          <tr class="student-row" data-student-id="${s.id}">
+            <td>${
+              s.full_name ||
+              (s.first_name || "") + " " + (s.last_name || "") ||
+              "N/A"
+            }</td>
+            <td>${s.registration_number || s.admission_no || "N/A"}</td>
+            <td>${s.class_assigned || s.class_name || s.class_id || "N/A"}</td>
+            <td>
+              <button class="btn btn-sm btn-outline-secondary me-1" data-edit-student-id="${
+                s.id
+              }" title="Edit"><i class="fas fa-edit"></i></button>
+              <button class="btn btn-sm btn-outline-danger" data-del-student-id="${
+                s.id
+              }" title="Delete"><i class="fas fa-trash"></i></button>
+            </td>
+          </tr>
+        `
           )
           .join("");
+
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-users"></i> Students</h3>
-          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Add Student</button>
-          <div class="table-responsive">
-            <table class="table table-striped">
-              <thead class="table-light"><tr><th>Name</th><th>Reg. No</th><th>Class</th></tr></thead>
-              <tbody>${html}</tbody>
-            </table>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-users"></i> Students <span id="studentsCountBadge" class="badge bg-primary ms-2">${
+              (data || []).length
+            }</span></h3>
+            <button class="btn btn-primary btn-sm" onclick="renderAddStudentForm()"><i class="fas fa-user-plus"></i> Add Student</button>
+          </div>
+          <div class="row">
+            <div class="col-md-8">
+              <div class="card">
+                <div class="card-body">
+                  <div class="table-responsive">
+                    <table class="table table-striped mb-0">
+                      <thead class="table-light"><tr><th>Name</th><th>Reg. No</th><th>Class</th><th style=\"width:110px\">Actions</th></tr></thead>
+                      <tbody id="studentsTableBody">${
+                        listHtml ||
+                        '<tr><td colspan="4" class="text-center text-muted">No students</td></tr>'
+                      }</tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div id="studentDetailSide" class="card p-3">
+                <div class="text-center text-muted py-5">Select a student to view details</div>
+              </div>
+            </div>
           </div>
         `;
+
+        document.querySelectorAll(".student-row").forEach((r) => {
+          r.addEventListener("click", async () => {
+            const id = r.getAttribute("data-student-id");
+            if (!id) return;
+            const side = document.getElementById("studentDetailSide");
+            side.innerHTML =
+              '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+            try {
+              const payload = await apiRequest(
+                `/students/${encodeURIComponent(id)}/full`
+              );
+              const student = payload.student || {};
+              const user = payload.user || {};
+              const clazz = payload.class || null;
+              const grades = payload.grades || [];
+              const photo =
+                resolvePhotoUrl(user.photo_url) ||
+                `${API_BASE}/static/fair-educare/images/avatar-placeholder.png`;
+              side.innerHTML = `
+                <div class="text-center mb-3">
+                  <img src="${photo}" alt="profile" style="width:110px;height:110px;border-radius:8px;object-fit:cover;" />
+                  <h5 class="mt-2">${
+                    user.full_name ||
+                    (student.first_name || "") + " " + (student.last_name || "")
+                  }</h5>
+                  <p class="text-muted small">${user.email || ""}<br/>${
+                user.phone || ""
+              }</p>
+                </div>
+                <div class="mb-3">
+                  <h6>Details</h6>
+                  <div class="small"><strong>Admission No:</strong> ${
+                    student.admission_no || "N/A"
+                  }</div>
+                  <div class="small"><strong>Class:</strong> ${
+                    clazz ? clazz.name : student.class_id || "N/A"
+                  }</div>
+                  <div class="small"><strong>DOB:</strong> ${
+                    student.dob || "N/A"
+                  }</div>
+                  <div class="small"><strong>Gender:</strong> ${
+                    student.gender || "N/A"
+                  }</div>
+                </div>
+                <div>
+                  <h6>Recent Grades</h6>
+                  <ul class="list-group mb-2">
+                    ${
+                      (grades || [])
+                        .slice(0, 5)
+                        .map(
+                          (g) =>
+                            `<li class="list-group-item small"><strong>${
+                              g.exam || "Exam"
+                            }</strong>: ${g.marks_obtained ?? "-"} ${
+                              g.grade_letter ? `(${g.grade_letter})` : ""
+                            }</li>`
+                        )
+                        .join("") ||
+                      '<li class="list-group-item small text-muted">No grades</li>'
+                    }
+                  </ul>
+                </div>`;
+            } catch (e) {
+              side.innerHTML = `<div class=\"alert alert-danger\">${e.message}</div>`;
+            }
+          });
+        });
       }
 
       function renderAdminMedicals() {
@@ -4927,17 +6567,152 @@
       }
 
       function renderAdminPhotoJournals() {
+        document.getElementById("pageTitle").textContent = "Photo Journals";
         document.getElementById("contentArea").innerHTML = `
-          <h3><i class="fas fa-images"></i> Photo Journals</h3>
-          <hr>
-          <button class="btn btn-primary btn-sm mb-3"><i class="fas fa-plus"></i> Upload Album</button>
-          <div class="card">
-            <div class="card-body text-center text-muted py-5">
-              <i class="fas fa-image fa-3x mb-3"></i>
-              <p>No photo albums created yet.</p>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0"><i class="fas fa-images"></i> Photo Journals</h3>
+          </div>
+          <div id="albumAlert" class="alert d-none"></div>
+          <div class="card mb-3">
+            <div class="card-body">
+              <form id="albumUploadForm">
+                <div class="row g-3">
+                  <div class="col-md-5">
+                    <label class="form-label">Album Title</label>
+                    <input name="title" class="form-control" placeholder="e.g. Inter-House Sports 2025" required />
+                  </div>
+                  <div class="col-md-7">
+                    <label class="form-label">Description (optional)</label>
+                    <input name="description" class="form-control" placeholder="Short description" />
+                  </div>
+                  <div class="col-md-12">
+                    <label class="form-label">Photos</label>
+                    <input id="albumFiles" type="file" class="form-control" accept="image/*" multiple required />
+                  </div>
+                </div>
+                <div class="mt-3">
+                  <button class="btn btn-primary"><i class="fas fa-upload"></i> Upload Album</button>
+                </div>
+              </form>
             </div>
           </div>
+          <div class="row" id="albumGrid"><div class="col-12 text-center text-muted py-4">Loading albums...</div></div>
         `;
+
+        document
+          .getElementById("albumUploadForm")
+          ?.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const alertEl = document.getElementById("albumAlert");
+            alertEl.classList.add("d-none");
+            const title = e.target.querySelector('[name="title"]').value.trim();
+            const description = e.target
+              .querySelector('[name="description"]')
+              .value.trim();
+            const files = document.getElementById("albumFiles").files;
+            if (!title || !files || files.length === 0) {
+              alertEl.className = "alert alert-danger";
+              alertEl.textContent =
+                "Please provide a title and select at least one image.";
+              alertEl.classList.remove("d-none");
+              return;
+            }
+            try {
+              const fd = new FormData();
+              fd.append("title", title);
+              if (description) fd.append("description", description);
+              for (const f of files) fd.append("images", f);
+              const res = await apiRequest("/photo-journals/albums", {
+                method: "POST",
+                body: fd,
+              });
+              alertEl.className = "alert alert-success";
+              alertEl.textContent = `Album "${res.title}" uploaded with ${
+                res.photos?.length || 0
+              } photos.`;
+              alertEl.classList.remove("d-none");
+              e.target.reset();
+              await loadAlbums();
+            } catch (err) {
+              alertEl.className = "alert alert-danger";
+              alertEl.textContent = err.message || String(err);
+              alertEl.classList.remove("d-none");
+            }
+          });
+
+        loadAlbums();
+      }
+
+      async function loadAlbums() {
+        try {
+          const res = await apiRequest("/photo-journals/albums");
+          renderAlbumGrid(res.albums || []);
+        } catch (e) {
+          renderAlbumGrid([]);
+        }
+      }
+
+      function renderAlbumGrid(albums) {
+        const grid = document.getElementById("albumGrid");
+        if (!albums || albums.length === 0) {
+          grid.innerHTML =
+            '<div class="col-12 text-center text-muted py-4">No photo albums created yet.</div>';
+          return;
+        }
+        grid.innerHTML = albums
+          .map(
+            (a) => `
+            <div class="col-md-3 mb-3">
+              <div class="card h-100" role="button" onclick="showAlbumDetail('${
+                a.id
+              }')">
+                <img src="${resolvePhotoUrl(
+                  a.cover_url
+                )}" alt="cover" class="card-img-top" style="height:160px;object-fit:cover;" />
+                <div class="card-body">
+                  <h6 class="card-title mb-1">${a.title}</h6>
+                  <div class="small text-muted">${
+                    a.photo_count || 0
+                  } photos</div>
+                </div>
+              </div>
+            </div>`
+          )
+          .join("");
+      }
+
+      async function showAlbumDetail(id) {
+        try {
+          const a = await apiRequest(
+            `/photo-journals/albums/${encodeURIComponent(id)}`
+          );
+          document.getElementById("contentArea").innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h3 class="mb-0"><i class="fas fa-images"></i> ${a.title}</h3>
+              <button class="btn btn-sm btn-outline-secondary" onclick="renderAdminPhotoJournals()"><i class="fas fa-arrow-left"></i> Back</button>
+            </div>
+            <div class="row">
+              ${(a.photos || [])
+                .map(
+                  (p) => `
+                    <div class="col-md-3 mb-3">
+                      <div class="card h-100">
+                        <img src="${resolvePhotoUrl(
+                          p.image_url
+                        )}" class="card-img-top" style="height:200px;object-fit:cover;" />
+                      </div>
+                    </div>`
+                )
+                .join("")}
+            </div>`;
+        } catch (e) {
+          showAlert("loginAlert", e.message || String(e));
+        }
+      }
+
+      // Simple wrapper so both admin and non-admin views can reuse the same renderer
+      function renderStudents(data) {
+        renderAdminStudents(data);
       }
 
       function renderAdminAttendance(data) {
@@ -5605,6 +7380,287 @@
               `;
       }
 
+      // Helpers to navigate to a newly created student's profile
+      async function waitForElement(selector, timeout = 5000) {
+        const start = Date.now();
+        return new Promise((resolve, reject) => {
+          const check = () => {
+            const el = document.querySelector(selector);
+            if (el) return resolve(el);
+            if (Date.now() - start >= timeout)
+              return reject(new Error("Element not found: " + selector));
+            setTimeout(check, 50);
+          };
+          check();
+        });
+      }
+
+      async function openStudentProfile(studentId) {
+        try {
+          await endpointHandlers.students();
+          const row = await waitForElement(
+            `[data-student-id="${studentId}"]`,
+            5000
+          );
+          row.scrollIntoView({ behavior: "smooth", block: "center" });
+          row.click();
+        } catch (e) {
+          try {
+            await endpointHandlers.students();
+          } catch (_) {}
+        }
+      }
+
+      // Global delegated delete handlers for Students/Teachers
+      (function wireGlobalDeleteHandlers() {
+        const area = document.getElementById("contentArea");
+        if (!area) return;
+        area.addEventListener("click", async (e) => {
+          // Edit handlers
+          const editBtn = e.target.closest(
+            "[data-edit-student-id], [data-edit-teacher-id]"
+          );
+          if (editBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            const sid = editBtn.getAttribute("data-edit-student-id");
+            const tid = editBtn.getAttribute("data-edit-teacher-id");
+            if (sid) return openEditStudentModal(sid);
+            if (tid) return openEditTeacherModal(tid);
+          }
+          // Delete handlers
+          const btn = e.target.closest(
+            "[data-del-student-id], [data-del-teacher-id]"
+          );
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const studentId = btn.getAttribute("data-del-student-id");
+          const teacherId = btn.getAttribute("data-del-teacher-id");
+          const isStudent = !!studentId;
+          const id = studentId || teacherId;
+          const entity = isStudent ? "student" : "teacher";
+          if (!id) return;
+          if (
+            !confirm(
+              `Are you sure you want to delete this ${entity}? This cannot be undone.`
+            )
+          )
+            return;
+          btn.disabled = true;
+          try {
+            await apiRequest(
+              `/${isStudent ? "students" : "teachers"}/${encodeURIComponent(
+                id
+              )}`,
+              {
+                method: "DELETE",
+              }
+            );
+            try {
+              showAlert(
+                "loginAlert",
+                `${entity.charAt(0).toUpperCase() + entity.slice(1)} deleted`,
+                "success"
+              );
+            } catch (_) {}
+            // Decrement badge (adjustCountBadge will refresh dashboard KPIs)
+            adjustCountBadge(
+              isStudent ? "studentsCountBadge" : "teachersCountBadge",
+              -1
+            );
+            // Refresh current admin list view
+            if (isStudent && endpointHandlers["admin-students"]) {
+              await endpointHandlers["admin-students"]();
+            } else if (!isStudent && endpointHandlers["admin-teachers"]) {
+              await endpointHandlers["admin-teachers"]();
+            }
+          } catch (err) {
+            showAlert("loginAlert", err.message || String(err));
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      })();
+
+      // --- Admin Edit Modals ---
+      function ensureAdminEditModal() {
+        let el = document.getElementById("adminEditModal");
+        if (el) return el;
+        const html = `
+        <div class="modal fade" id="adminEditModal" tabindex="-1" aria-hidden="true">
+          <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="adminEditTitle">Edit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div id="adminEditAlert"></div>
+                <form id="adminEditForm"></form>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" form="adminEditForm" class="btn btn-primary">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        </div>`;
+        const container = document.createElement("div");
+        container.innerHTML = html;
+        document.body.appendChild(container.firstElementChild);
+        return document.getElementById("adminEditModal");
+      }
+
+      async function openEditStudentModal(studentId) {
+        const modalEl = ensureAdminEditModal();
+        document.getElementById("adminEditTitle").textContent = "Edit Student";
+        const form = document.getElementById("adminEditForm");
+        const alertDiv = document.getElementById("adminEditAlert");
+        alertDiv.innerHTML = "";
+        form.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
+        const m = new bootstrap.Modal(modalEl);
+        m.show();
+        try {
+          const full = await apiRequest(
+            `/students/${encodeURIComponent(studentId)}/full`
+          );
+          const student = full.student || {};
+          const user = full.user || {};
+          form.innerHTML = `
+            <div class="row g-3">
+              <div class="col-md-6"><label class="form-label">First Name</label><input name="first_name" class="form-control" value="${
+                student.first_name || ""
+              }" required></div>
+              <div class="col-md-6"><label class="form-label">Last Name</label><input name="last_name" class="form-control" value="${
+                student.last_name || ""
+              }" required></div>
+              <div class="col-md-6"><label class="form-label">DOB</label><input name="dob" type="date" class="form-control" value="${(
+                student.dob || ""
+              )
+                .toString()
+                .slice(0, 10)}"></div>
+              <div class="col-md-6"><label class="form-label">Gender</label><input name="gender" class="form-control" value="${
+                student.gender || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Admission No</label><input name="admission_no" class="form-control" value="${
+                student.admission_no || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Class</label><input name="class_id" class="form-control" value="${
+                student.class_id || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Phone</label><input name="phone" class="form-control" value="${
+                user.phone || ""
+              }"></div>
+            </div>`;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData(form);
+            const payload = {};
+            for (const [k, v] of fd.entries())
+              if (String(v).trim() !== "") payload[k] = v;
+            try {
+              await apiRequest(`/students/${encodeURIComponent(studentId)}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+              });
+              alertDiv.innerHTML =
+                '<div class="alert alert-success">Student updated.</div>';
+              // adjustCountBadge will trigger an authoritative dashboard refresh
+              // Refresh current list if on admin students
+              if (endpointHandlers["admin-students"])
+                await endpointHandlers["admin-students"]();
+              m.hide();
+            } catch (err) {
+              alertDiv.innerHTML = `<div class="alert alert-danger">${err.message}</div>`;
+            }
+          };
+        } catch (e) {
+          form.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+        }
+      }
+
+      async function openEditTeacherModal(teacherId) {
+        const modalEl = ensureAdminEditModal();
+        document.getElementById("adminEditTitle").textContent = "Edit Teacher";
+        const form = document.getElementById("adminEditForm");
+        const alertDiv = document.getElementById("adminEditAlert");
+        alertDiv.innerHTML = "";
+        form.innerHTML = `<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>`;
+        const m = new bootstrap.Modal(modalEl);
+        m.show();
+        try {
+          const t = await apiRequest(
+            `/teachers/${encodeURIComponent(teacherId)}`
+          );
+          form.innerHTML = `
+            <div class="row g-3">
+              <div class="col-md-6"><label class="form-label">First Name</label><input name="first_name" class="form-control" value="${
+                t.first_name || ""
+              }" required></div>
+              <div class="col-md-6"><label class="form-label">Last Name</label><input name="last_name" class="form-control" value="${
+                t.last_name || ""
+              }" required></div>
+              <div class="col-md-6"><label class="form-label">Date of Birth</label><input name="date_of_birth" type="date" class="form-control" value="${(
+                t.date_of_birth || ""
+              )
+                .toString()
+                .slice(0, 10)}"></div>
+              <div class="col-md-6"><label class="form-label">Gender</label><input name="gender" class="form-control" value="${
+                t.gender || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Employee ID</label><input name="employee_id" class="form-control" value="${
+                t.employee_id || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Qualification</label><input name="qualification" class="form-control" value="${
+                t.qualification || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Specialization</label><input name="specialization" class="form-control" value="${
+                t.specialization || ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Experience Years</label><input name="experience_years" type="number" min="0" class="form-control" value="${
+                t.experience_years ?? ""
+              }"></div>
+              <div class="col-md-6"><label class="form-label">Joining Date</label><input name="joining_date" type="date" class="form-control" value="${(
+                t.joining_date || ""
+              )
+                .toString()
+                .slice(0, 10)}"></div>
+              <div class="col-md-6"><label class="form-label">Emergency Contact</label><input name="emergency_contact" class="form-control" value="${
+                t.emergency_contact || ""
+              }"></div>
+              <div class="col-12"><label class="form-label">Address</label><textarea name="address" class="form-control" rows="2">${
+                t.address || ""
+              }</textarea></div>
+            </div>`;
+          form.onsubmit = async (e) => {
+            e.preventDefault();
+            const fd = new FormData(form);
+            const payload = {};
+            for (const [k, v] of fd.entries())
+              if (String(v).trim() !== "") payload[k] = v;
+            if (payload.experience_years)
+              payload.experience_years = Number(payload.experience_years);
+            try {
+              await apiRequest(`/teachers/${encodeURIComponent(teacherId)}`, {
+                method: "PUT",
+                body: JSON.stringify(payload),
+              });
+              alertDiv.innerHTML =
+                '<div class="alert alert-success">Teacher updated.</div>';
+              // adjustCountBadge will trigger an authoritative dashboard refresh
+              if (endpointHandlers["admin-teachers"])
+                await endpointHandlers["admin-teachers"]();
+              m.hide();
+            } catch (err) {
+              alertDiv.innerHTML = `<div class=\"alert alert-danger\">${err.message}</div>`;
+            }
+          };
+        } catch (e) {
+          form.innerHTML = `<div class=\"alert alert-danger\">${e.message}</div>`;
+        }
+      }
+
       document
         .querySelector(".sidebar-header")
         .addEventListener("click", () => {
@@ -5619,6 +7675,58 @@
 
       showScreen("loginScreen");
     </script>
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-user-circle me-1"></i> My Avatar
+            </h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div
+              id="profileAvatarWrapper"
+              class="d-flex justify-content-center mb-3"
+            ></div>
+            <div class="mb-3">
+              <label class="form-label">Upload New Photo</label>
+              <input
+                id="avatarFileInput"
+                type="file"
+                accept="image/*"
+                class="form-control"
+              />
+              <div class="form-text">PNG/JPG up to ~2MB recommended.</div>
+            </div>
+            <div class="d-flex gap-2">
+              <button
+                type="button"
+                class="btn btn-primary"
+                onclick="uploadAvatar()"
+              >
+                <i class="fas fa-upload"></i> Upload
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline-danger"
+                onclick="removeAvatar()"
+              >
+                <i class="fas fa-trash"></i> Remove
+              </button>
+            </div>
+            <div id="avatarStatus" class="small mt-2 text-muted"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/static/fair-educare/js/ui.js"></script>
   </body>
 </html>

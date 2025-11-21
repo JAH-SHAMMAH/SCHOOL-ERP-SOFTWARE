@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>School Store</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      body {
+        background: #f7f9fc;
+      }
+      .product-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .product-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      }
+      .product-img {
+        height: 160px;
+        object-fit: cover;
+        border-top-left-radius: 0.5rem;
+        border-top-right-radius: 0.5rem;
+      }
+      .price {
+        font-weight: 800;
+        color: #111827;
+      }
+      .rating i {
+        color: #f59e0b;
+      }
+      .navbar-brand {
+        font-weight: 800;
+      }
+      .admin-badge {
+        font-size: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <nav
+      class="navbar navbar-expand-lg bg-white border-bottom shadow-sm sticky-top"
+    >
+      <div class="container">
+        <a class="navbar-brand" href="#"
+          ><i class="fas fa-store me-2 text-primary"></i>Fairview Store</a
+        >
+        <div class="d-flex gap-2">
+          <button id="addItemBtn" class="btn btn-outline-primary d-none">
+            <i class="fas fa-plus"></i> Add Item
+          </button>
+          <button class="btn btn-primary" onclick="openCart()">
+            <i class="fas fa-shopping-cart me-1"></i> Cart
+            <span class="badge bg-light text-dark" id="cartCount">0</span>
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <main class="container py-4">
+      <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+          <h3 class="mb-0">Catalog</h3>
+          <div class="text-muted small">Browse items and add to cart</div>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group">
+            <span class="input-group-text bg-white"
+              ><i class="fas fa-search"></i
+            ></span>
+            <input
+              id="searchInput"
+              class="form-control"
+              placeholder="Search items..."
+              oninput="renderCatalog()"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div id="catalogGrid" class="row g-3"></div>
+    </main>
+
+    <!-- Reviews Modal -->
+    <div class="modal fade" id="reviewsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-comment-dots"></i> Item Reviews
+            </h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="reviewsAlert"></div>
+            <div class="mb-3">
+              <div class="d-flex align-items-center justify-content-between">
+                <div>
+                  <div id="reviewsItemTitle" class="fw-bold"></div>
+                  <small id="reviewsItemStats" class="text-muted"></small>
+                </div>
+                <div>
+                  <div
+                    id="myStars"
+                    class="fs-5 text-warning"
+                    style="cursor: pointer"
+                  ></div>
+                </div>
+              </div>
+              <textarea
+                id="myComment"
+                class="form-control mt-2"
+                rows="2"
+                placeholder="Write your review (optional)"
+              ></textarea>
+              <div class="text-end mt-2">
+                <button class="btn btn-sm btn-primary" onclick="submitReview()">
+                  <i class="fas fa-paper-plane"></i> Submit
+                </button>
+              </div>
+            </div>
+            <hr />
+            <div id="reviewsList">Loading...</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cart Modal -->
+    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="fas fa-shopping-basket"></i> Your Cart
+            </h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="cartBody">Loading...</div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Close
+            </button>
+            <button class="btn btn-primary" onclick="checkout()">
+              <i class="fas fa-credit-card"></i> Checkout
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Item (Admin) Modal -->
+    <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Add Store Item</h5>
+            <button class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div id="addItemAlert"></div>
+            <div class="mb-3">
+              <label class="form-label">Title</label>
+              <input id="siTitle" class="form-control" />
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Description</label>
+              <textarea id="siDesc" class="form-control" rows="3"></textarea>
+            </div>
+            <div class="row">
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Price (₦)</label>
+                <input
+                  id="siPrice"
+                  type="number"
+                  min="0"
+                  class="form-control"
+                />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Stock</label>
+                <input
+                  id="siStock"
+                  type="number"
+                  min="0"
+                  class="form-control"
+                />
+              </div>
+              <div class="col-md-4 mb-3">
+                <label class="form-label">Image URL</label>
+                <input
+                  id="siImage"
+                  class="form-control"
+                  placeholder="https://..."
+                />
+                <div class="mt-2 d-flex align-items-center gap-2">
+                  <input
+                    id="siImageFile"
+                    type="file"
+                    accept="image/*"
+                    class="form-control form-control-sm"
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-outline-secondary"
+                    onclick="uploadItemImage()"
+                  >
+                    <i class="fas fa-upload"></i> Upload
+                  </button>
+                </div>
+                <div id="siUploadStatus" class="form-text"></div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">
+              Cancel
+            </button>
+            <button class="btn btn-primary" onclick="submitNewItem()">
+              <i class="fas fa-save"></i> Save Item
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const API_BASE = "http://localhost:8000";
+      let token = null;
+      let currentUser = null;
+      let catalog = [];
+      let cart = [];
+      let currentReviewItemId = null;
+      let currentReviewItem = null;
+      let myCurrentRating = 0;
+
+      function getHeaders() {
+        const h = { "Content-Type": "application/json" };
+        if (token) h["Authorization"] = `Bearer ${token}`;
+        return h;
+      }
+
+      async function api(endpoint, opts = {}) {
+        const res = await fetch(`${API_BASE}${endpoint}`, {
+          ...opts,
+          headers: { ...getHeaders(), ...(opts.headers || {}) },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok)
+          throw new Error(data.detail || data.message || "Request failed");
+        return data;
+      }
+
+      function isAdmin() {
+        return (currentUser?.role || "").toLowerCase() === "admin";
+      }
+
+      function starRating(r) {
+        const rating = Math.max(0, Math.min(5, Number(r || 0)));
+        const full = Math.floor(rating);
+        const half = rating - full >= 0.5 ? 1 : 0;
+        const empty = 5 - full - half;
+        return (
+          '<span class="rating">' +
+          '<i class="fas fa-star"></i>'.repeat(full) +
+          (half ? '<i class="fas fa-star-half-alt"></i>' : "") +
+          '<i class="far fa-star"></i>'.repeat(empty) +
+          "</span>"
+        );
+      }
+
+      function renderCatalog() {
+        const grid = document.getElementById("catalogGrid");
+        const q = (
+          document.getElementById("searchInput").value || ""
+        ).toLowerCase();
+        const filtered = catalog.filter((it) =>
+          (it.title || "").toLowerCase().includes(q)
+        );
+        grid.innerHTML =
+          filtered
+            .map(
+              (it) => `
+        <div class="col-md-4">
+          <div class="card product-card h-100">
+            ${
+              it.image_url
+                ? `<img src="${it.image_url}" class="product-img" alt="${it.title}">`
+                : ""
+            }
+            <div class="card-body d-flex flex-column">
+              <h6 class="card-title mb-1">${it.title}</h6>
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <div class="price">₦${(it.price ?? 0).toLocaleString()}</div>
+                <div style="cursor:pointer" title="View reviews" onclick="openReviews('${
+                  it.id
+                }')">${starRating(it.rating)} <small class="text-muted">(${
+                it.rating_count || 0
+              })</small></div>
+              </div>
+              <p class="text-muted small mb-3">${it.description || ""}</p>
+              <div class="mt-auto d-flex justify-content-between align-items-center">
+                <small class="text-muted">Stock: ${it.stock ?? 0}</small>
+                <button class="btn btn-sm btn-primary" onclick="addToCart('${
+                  it.id
+                }')"><i class="fas fa-cart-plus"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `
+            )
+            .join("") ||
+          '<div class="col-12 text-center text-muted">No items available.</div>';
+      }
+
+      async function loadCatalog() {
+        try {
+          const res = await api("/store/catalog");
+          catalog = (res.items || []).map((it) => ({
+            ...it,
+            rating: it.rating || 0,
+            rating_count: it.rating_count || 0,
+          }));
+          renderCatalog();
+        } catch (e) {
+          document.getElementById(
+            "catalogGrid"
+          ).innerHTML = `<div class="col-12 text-danger">${e.message}</div>`;
+        }
+      }
+
+      // Reviews UI helpers and actions
+      function renderSelectableStars(containerId, value) {
+        const el = document.getElementById(containerId);
+        myCurrentRating = Math.max(1, Math.min(5, Number(value || 0) || 1));
+        let html = "";
+        for (let i = 1; i <= 5; i++) {
+          html += `<i class="${
+            i <= myCurrentRating ? "fas" : "far"
+          } fa-star me-1" data-val="${i}"></i>`;
+        }
+        el.innerHTML = html;
+        [...el.querySelectorAll("i")].forEach((star) => {
+          star.onclick = () => {
+            myCurrentRating = Number(star.getAttribute("data-val"));
+            renderSelectableStars(containerId, myCurrentRating);
+          };
+        });
+      }
+
+      async function openReviews(itemId) {
+        const item = catalog.find((x) => x.id === itemId);
+        currentReviewItemId = itemId;
+        currentReviewItem = item || null;
+        document.getElementById("reviewsAlert").innerHTML = "";
+        document.getElementById("reviewsItemTitle").textContent = item
+          ? item.title
+          : "Item";
+        document.getElementById("reviewsItemStats").textContent = item
+          ? `Average ${Number(item.rating || 0).toFixed(1)} • ${
+              item.rating_count || 0
+            } review(s)`
+          : "";
+        document.getElementById("reviewsList").innerHTML = "Loading...";
+        document.getElementById("myComment").value = "";
+        renderSelectableStars("myStars", 5);
+        const m = new bootstrap.Modal(document.getElementById("reviewsModal"));
+        m.show();
+        try {
+          const mine = await api(
+            `/store/my-review?item_id=${encodeURIComponent(itemId)}`
+          );
+          if (mine && mine.exists) {
+            myCurrentRating = mine.rating || 5;
+            renderSelectableStars("myStars", myCurrentRating);
+            document.getElementById("myComment").value = mine.comment || "";
+          }
+        } catch (e) {
+          // ignore
+        }
+        await loadItemReviews(itemId);
+      }
+
+      async function loadItemReviews(itemId) {
+        const listEl = document.getElementById("reviewsList");
+        try {
+          const revs = await api(
+            `/store/items/${encodeURIComponent(itemId)}/reviews`
+          );
+          if (!revs || !revs.length) {
+            listEl.innerHTML =
+              '<div class="text-muted">No reviews yet. Be the first to review!</div>';
+            return;
+          }
+          const rows = revs
+            .map((r) => {
+              const dt = r.created_at
+                ? new Date(r.created_at).toLocaleString()
+                : "";
+              const comment = (r.comment || "").replace(/[<>]/g, "");
+              return `<div class="border rounded p-2 mb-2">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>${starRating(r.rating)}</div>
+                  <small class="text-muted">${dt}</small>
+                </div>
+                ${comment ? `<div class="mt-1">${comment}</div>` : ""}
+              </div>`;
+            })
+            .join("");
+          listEl.innerHTML = rows;
+        } catch (e) {
+          listEl.innerHTML = `<div class="text-danger">${e.message}</div>`;
+        }
+      }
+
+      async function submitReview() {
+        const alertEl = document.getElementById("reviewsAlert");
+        alertEl.innerHTML = "";
+        if (!currentReviewItemId) return;
+        const payload = {
+          item_id: currentReviewItemId,
+          rating: myCurrentRating || 5,
+          comment: document.getElementById("myComment").value.trim() || null,
+        };
+        try {
+          await api(
+            `/store/items/${encodeURIComponent(currentReviewItemId)}/reviews`,
+            {
+              method: "POST",
+              body: JSON.stringify(payload),
+            }
+          );
+          alertEl.innerHTML =
+            '<div class="alert alert-success py-1">Review saved.</div>';
+          await loadItemReviews(currentReviewItemId);
+          await loadCatalog();
+        } catch (e) {
+          alertEl.innerHTML = `<div class="alert alert-danger py-1">${e.message}</div>`;
+        }
+      }
+
+      // Admin: upload item image via API
+      async function uploadItemImage() {
+        const fileInput = document.getElementById("siImageFile");
+        const statusEl = document.getElementById("siUploadStatus");
+        statusEl.textContent = "";
+        if (!fileInput.files || !fileInput.files[0]) {
+          statusEl.textContent = "Choose an image file to upload.";
+          return;
+        }
+        try {
+          const fd = new FormData();
+          fd.append("file", fileInput.files[0]);
+          const res = await fetch(`${API_BASE}/store/upload-image`, {
+            method: "POST",
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: fd,
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok)
+            throw new Error(data.detail || data.message || "Upload failed");
+          const url = data.url;
+          document.getElementById("siImage").value = url || "";
+          statusEl.textContent = "Uploaded ✓";
+        } catch (e) {
+          statusEl.textContent = e.message;
+        }
+      }
+
+      async function refreshCartCount() {
+        try {
+          const res = await api("/store/cart");
+          const items = res.items || [];
+          cart = items;
+          const count = items.reduce(
+            (s, it) => s + (it.qty || it.quantity || 0),
+            0
+          );
+          document.getElementById("cartCount").textContent = String(count);
+        } catch (e) {
+          document.getElementById("cartCount").textContent = "0";
+        }
+      }
+
+      async function addToCart(itemId) {
+        try {
+          await api("/store/cart", {
+            method: "POST",
+            body: JSON.stringify({ item_id: itemId, qty: 1 }),
+          });
+          await refreshCartCount();
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      function openCart() {
+        const modal = new bootstrap.Modal(document.getElementById("cartModal"));
+        modal.show();
+        loadCart();
+      }
+
+      async function loadCart() {
+        const body = document.getElementById("cartBody");
+        body.innerHTML =
+          '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
+        try {
+          const res = await api("/store/cart");
+          const items = res.items || [];
+          if (!items.length) {
+            body.innerHTML =
+              '<div class="alert alert-info">Your cart is empty.</div>';
+            return;
+          }
+          const rows = items
+            .map(
+              (it) => `
+          <tr>
+            <td><div class="d-flex align-items-center"><img src="${
+              it.image_url || ""
+            }" style="width:48px;height:48px;object-fit:cover;border-radius:6px" class="me-2"/> ${
+                it.title || ""
+              }</div></td>
+            <td>${it.qty || it.quantity}</td>
+            <td>₦${(it.price ?? 0).toLocaleString()}</td>
+            <td>₦${(
+              it.subtotal ?? it.price * (it.qty || it.quantity || 1)
+            ).toLocaleString()}</td>
+          </tr>
+        `
+            )
+            .join("");
+          body.innerHTML = `
+          <div class="table-responsive">
+            <table class="table">
+              <thead><tr><th>Item</th><th>Qty</th><th>Price</th><th>Subtotal</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+        } catch (e) {
+          body.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+        }
+      }
+
+      async function checkout() {
+        try {
+          const res = await api("/store/checkout", { method: "POST" });
+          alert(
+            `Checkout complete. Total: ₦${(res.total || 0).toLocaleString()}`
+          );
+          await refreshCartCount();
+          const modalEl = document.getElementById("cartModal");
+          bootstrap.Modal.getInstance(modalEl)?.hide();
+        } catch (e) {
+          alert(e.message);
+        }
+      }
+
+      function showAddItemModal() {
+        const m = new bootstrap.Modal(document.getElementById("addItemModal"));
+        document.getElementById("addItemAlert").innerHTML = "";
+        document.getElementById("siTitle").value = "";
+        document.getElementById("siDesc").value = "";
+        document.getElementById("siPrice").value = "";
+        document.getElementById("siStock").value = "";
+        document.getElementById("siImage").value = "";
+        m.show();
+      }
+
+      async function submitNewItem() {
+        const title = document.getElementById("siTitle").value.trim();
+        const description = document.getElementById("siDesc").value.trim();
+        const price = Number(document.getElementById("siPrice").value || 0);
+        const stock = Number(document.getElementById("siStock").value || 0);
+        const image_url =
+          document.getElementById("siImage").value.trim() || null;
+        const alertDiv = document.getElementById("addItemAlert");
+        alertDiv.innerHTML = "";
+        if (!title || price < 0 || stock < 0) {
+          alertDiv.innerHTML =
+            '<div class="alert alert-warning">Provide a valid title, price and stock.</div>';
+          return;
+        }
+        try {
+          await api("/store/items", {
+            method: "POST",
+            body: JSON.stringify({
+              title,
+              description,
+              price,
+              stock,
+              image_url,
+            }),
+          });
+          bootstrap.Modal.getInstance(
+            document.getElementById("addItemModal")
+          )?.hide();
+          await loadCatalog();
+        } catch (e) {
+          alertDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
+        }
+      }
+
+      function init() {
+        try {
+          token = localStorage.getItem("currentToken") || null;
+        } catch (e) {}
+        try {
+          currentUser = JSON.parse(
+            localStorage.getItem("currentUser") || "null"
+          );
+        } catch (e) {
+          currentUser = null;
+        }
+        if (!token) {
+          const container = document.getElementById("catalogGrid");
+          container.innerHTML =
+            '<div class="col-12"><div class="alert alert-warning">Please login to view the store.</div></div>';
+          return;
+        }
+        if (isAdmin()) {
+          const btn = document.getElementById("addItemBtn");
+          btn.classList.remove("d-none");
+          btn.onclick = showAddItemModal;
+          btn.insertAdjacentHTML(
+            "afterend",
+            '<span class="badge bg-warning text-dark admin-badge align-self-center">Admin</span>'
+          );
+        }
+        loadCatalog();
+        refreshCartCount();
+      }
+
+      document.addEventListener("DOMContentLoaded", init);
+    </script>
+  </body>
+</html>

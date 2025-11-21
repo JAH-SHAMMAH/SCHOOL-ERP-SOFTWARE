@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     Enum as SAEnum,
     ForeignKey,
+    JSON,
     create_engine,
 )
 from sqlalchemy.orm import relationship, declarative_base
@@ -71,6 +72,7 @@ class User(Base):
     parent_id = Column(
         String(36), ForeignKey("users.id")
     )  # match type with id (String)
+    photo_url = Column(String(1000), nullable=True)  # user avatar/photo path
 
     # Relationships
     parent = relationship("User", remote_side=[id], back_populates="children")
@@ -80,6 +82,8 @@ class User(Base):
     teacher = relationship("Teacher", back_populates="user", uselist=False)
 
     payments = relationship("Payment", back_populates="parent", cascade="all, delete")
+    # Messages posted by the user
+    messages = relationship("Message", back_populates="user", cascade="all, delete")
 
 
 class Class(Base):
@@ -392,6 +396,44 @@ class Announcement(Base):
     creator = relationship("User")
 
 
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    content = Column(Text, nullable=False)
+    approved = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    user = relationship("User", back_populates="messages")
+
+
+class MailMessage(Base):
+    __tablename__ = "mail_messages"
+
+    id = Column(String(36), primary_key=True, index=True)
+    sender_email = Column(String(255), nullable=False, index=True)
+    recipient_email = Column(String(255), nullable=False, index=True)
+    subject = Column(String(500), nullable=False)
+    body = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    # optional simple threading/grouping
+    thread_id = Column(String(36), nullable=True, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "sender_email": self.sender_email,
+            "recipient_email": self.recipient_email,
+            "subject": self.subject,
+            "body": self.body,
+            "is_read": self.is_read,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "thread_id": self.thread_id,
+        }
+
+
 class Event(Base):
     __tablename__ = "events"
 
@@ -457,6 +499,20 @@ class StoreItem(Base):
     order_items = relationship("OrderItem", back_populates="item")
 
 
+class StoreReview(Base):
+    __tablename__ = "store_reviews"
+
+    id = Column(String(36), primary_key=True, index=True)
+    item_id = Column(String(36), ForeignKey("store_items.id"), nullable=False)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=False)
+    rating = Column(Integer, nullable=False)  # 1-5
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    item = relationship("StoreItem")
+    user = relationship("User")
+
+
 class Order(Base):
     __tablename__ = "orders"
 
@@ -498,6 +554,106 @@ class WebhookEvent(Base):
     processed = Column(Boolean, default=False)
 
     payment = relationship("Payment", back_populates="webhook_events")
+
+
+# =============================
+# AI Advisor / Analytics Models
+# =============================
+class AdvisorMetric(Base):
+    __tablename__ = "advisor_metrics"
+
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    metric_type = Column(
+        String(100), nullable=False, index=True
+    )  # e.g. sale_amount, login, attendance_present
+    value = Column(Float, nullable=False, default=0.0)
+    context = Column(
+        JSON, nullable=True
+    )  # optional extra data (order_id, item_count, etc.)
+    recorded_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User")
+
+
+class AdvisorInsight(Base):
+    __tablename__ = "advisor_insights"
+
+    id = Column(String(36), primary_key=True, index=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    category = Column(String(100), nullable=True)  # sales, attendance, engagement
+    insight_text = Column(Text, nullable=False)
+    score = Column(Float, nullable=True)  # heuristic confidence/impact
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    user = relationship("User")
+
+
+# =============================================================================
+# Additional Models for Enhanced Features
+# =============================================================================
+class PhotoAlbum(Base):
+    __tablename__ = "photo_albums"
+
+    id = Column(String(36), primary_key=True, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    cover_url = Column(String(1000), nullable=True)
+    created_by = Column(String(36), ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    creator = relationship("User")
+    photos = relationship(
+        "PhotoAlbumPhoto", back_populates="album", cascade="all, delete-orphan"
+    )
+
+
+class PhotoAlbumPhoto(Base):
+    __tablename__ = "photo_album_photos"
+
+    id = Column(String(36), primary_key=True, index=True)
+    album_id = Column(String(36), ForeignKey("photo_albums.id"), nullable=False)
+    image_url = Column(String(1000), nullable=False)
+    caption = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+    album = relationship("PhotoAlbum", back_populates="photos")
+
+
+class VirtualClassroom(Base):
+    __tablename__ = "virtual_classrooms"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(Text)
+    platform = Column(String, nullable=False)  # zoom, googlemeet, teams
+    platform_link = Column(String)
+    teacher_id = Column(String, ForeignKey("users.id"), nullable=False)
+    scheduled_time = Column(DateTime)
+    created_at = Column(DateTime, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+    teacher = relationship("User", back_populates="virtual_classrooms")
+
+
+class CBTSubmission(Base):
+    __tablename__ = "cbt_submissions"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False)
+    test_id = Column(String, nullable=False)
+    answers = Column(JSON)  # Store answers as JSON
+    score = Column(Float)
+    completion_time = Column(Integer)  # in seconds
+    submitted_at = Column(DateTime, nullable=False)
+
+    user = relationship("User", back_populates="cbt_submissions")
+
+
+# Update User model to include relationships
+User.messages = relationship("Message", back_populates="user")
+User.virtual_classrooms = relationship("VirtualClassroom", back_populates="teacher")
+User.cbt_submissions = relationship("CBTSubmission", back_populates="user")
 
 
 # ---------- Create tables convenience ----------

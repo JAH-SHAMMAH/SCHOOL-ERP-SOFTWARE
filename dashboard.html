@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CBT Test Dashboard</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+      }
+      .test-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+      .question-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        transition: all 0.3s;
+      }
+      .question-card:hover {
+        border-color: #007bff;
+        box-shadow: 0 4px 8px rgba(0, 123, 255, 0.1);
+      }
+      .timer {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #dc3545;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container-fluid p-4">
+      <div class="test-container p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h4 class="mb-0">
+              <i class="fas fa-laptop text-primary"></i> CBT Test Dashboard
+            </h4>
+            <p class="text-muted mb-0">Computer Based Testing Platform</p>
+          </div>
+          <div class="text-end">
+            <div class="timer" id="timer">45:00</div>
+            <small class="text-muted">Time Remaining</small>
+          </div>
+        </div>
+
+        <!-- Advisor Analytics (Admin/Staff only) -->
+        <div id="advisorAnalytics" class="mb-4" style="display: none">
+          <h5 class="mb-3">
+            <i class="fas fa-chart-line text-success"></i> Operational
+            Intelligence
+          </h5>
+          <div id="advisorStatus" class="text-muted" style="font-size: 13px">
+            Loading analytics...
+          </div>
+          <div id="advisorKpis" class="row g-3 mt-2"></div>
+          <div id="advisorBlocks" class="row g-3 mt-2"></div>
+          <div id="advisorInsights" class="mt-3" style="display: none">
+            <h6 class="mb-2">Improvement Tips</h6>
+            <ul id="advisorInsightList" class="list-group"></ul>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-9">
+            <div class="question-card p-4 mb-4">
+              <h5 class="mb-3">
+                Question <span id="currentQuestion">1</span> of
+                <span id="totalQuestions">10</span>
+              </h5>
+              <div id="questionContent">
+                <p><strong>Sample Question: What is 2 + 2?</strong></p>
+                <div class="mt-3">
+                  <div class="form-check mb-2">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="answer"
+                      value="a"
+                      id="option1"
+                    />
+                    <label class="form-check-label" for="option1">3</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="answer"
+                      value="b"
+                      id="option2"
+                    />
+                    <label class="form-check-label" for="option2">4</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="answer"
+                      value="c"
+                      id="option3"
+                    />
+                    <label class="form-check-label" for="option3">5</label>
+                  </div>
+                  <div class="form-check mb-2">
+                    <input
+                      class="form-check-input"
+                      type="radio"
+                      name="answer"
+                      value="d"
+                      id="option4"
+                    />
+                    <label class="form-check-label" for="option4">6</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between">
+              <button class="btn btn-outline-secondary" id="prevBtn" disabled>
+                <i class="fas fa-chevron-left"></i> Previous
+              </button>
+              <button class="btn btn-primary" id="nextBtn">
+                Next <i class="fas fa-chevron-right"></i>
+              </button>
+              <button
+                class="btn btn-success"
+                id="submitBtn"
+                onclick="submitTest()"
+              >
+                <i class="fas fa-check"></i> Submit Test
+              </button>
+            </div>
+          </div>
+
+          <div class="col-md-3">
+            <div class="card">
+              <div class="card-header bg-light">
+                <i class="fas fa-info-circle"></i> Test Information
+              </div>
+              <div class="card-body">
+                <small class="text-muted">
+                  <div class="mb-2"><strong>Duration:</strong> 45 minutes</div>
+                  <div class="mb-2"><strong>Questions:</strong> 10</div>
+                  <div class="mb-2"><strong>Pass Mark:</strong> 60%</div>
+                  <div><strong>Attempts:</strong> 1 of 1</div>
+                </small>
+              </div>
+            </div>
+
+            <div class="card mt-3">
+              <div class="card-header bg-light">
+                <i class="fas fa-clock"></i> Progress
+              </div>
+              <div class="card-body">
+                <div class="progress mb-2">
+                  <div
+                    class="progress-bar"
+                    role="progressbar"
+                    style="width: 10%"
+                    id="progressBar"
+                  >
+                    10%
+                  </div>
+                </div>
+                <small class="text-muted">Question 1 of 10 completed</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // =============================
+      // Advisor Analytics Integration
+      // =============================
+      document.addEventListener("DOMContentLoaded", () => {
+        loadAdvisorAnalytics();
+      });
+
+      async function loadAdvisorAnalytics(days = 30) {
+        const token = localStorage.getItem("currentToken");
+        const roleRaw = localStorage.getItem("currentUser");
+        let role = null;
+        try {
+          role = roleRaw ? JSON.parse(roleRaw).role : null;
+        } catch (e) {}
+        const section = document.getElementById("advisorAnalytics");
+        const status = document.getElementById("advisorStatus");
+        if (!section) return;
+        // Only show for admin/staff
+        if (
+          !token ||
+          !role ||
+          !["admin", "staff"].includes(String(role).toLowerCase())
+        ) {
+          return; // do not display section
+        }
+        section.style.display = "block";
+        try {
+          const res = await fetch(`/advisor/detailed?days=${days}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+          }
+          const data = await res.json();
+          status.textContent = `Window: ${days} days  • Generated: ${data.generated_at}`;
+          renderKpis(data.totals || {});
+          renderBlocks(data);
+          renderInsights(data.insights || []);
+        } catch (err) {
+          status.innerHTML = `<span class='text-danger'>Failed to load analytics: ${err.message}</span>`;
+        }
+      }
+
+      function renderKpis(totals) {
+        const wrap = document.getElementById("advisorKpis");
+        if (!wrap) return;
+        const kpis = [
+          ["students", "Students"],
+          ["teachers", "Teachers"],
+          ["teacher_student_ratio", "Teacher/Student"],
+          ["avg_class_size", "Avg Class Size"],
+          ["attendance_rate", "Attendance %"],
+          ["exam_pass_rate", "Exam Pass %"],
+          ["unpaid_fees", "Unpaid Fees"],
+          ["store_revenue", "Store Revenue"],
+        ];
+        wrap.innerHTML = kpis
+          .map(([k, label]) => {
+            let val = totals[k];
+            if (val === undefined || val === null) val = 0;
+            if (String(k).includes("rate"))
+              val = (Number(val) * 100).toFixed(1) + "%";
+            return `<div class='col-6 col-md-3'>
+            <div class='p-2 border rounded h-100 bg-light'>
+              <div style='font-size:11px;' class='text-muted'>${label}</div>
+              <div style='font-size:18px; font-weight:600;'>${val}</div>
+            </div>
+          </div>`;
+          })
+          .join("");
+      }
+
+      function renderBlocks(data) {
+        const wrap = document.getElementById("advisorBlocks");
+        if (!wrap) return;
+        wrap.innerHTML = "";
+        wrap.appendChild(
+          blockSimpleBar("Grade Distribution", data.grade_distribution || {})
+        );
+        wrap.appendChild(
+          blockSimpleBar("Review Sentiment", data.sentiment_distribution || {})
+        );
+        wrap.appendChild(blockStore(data.store_performance || []));
+      }
+
+      function blockSimpleBar(title, obj) {
+        const max = Math.max(1, ...Object.values(obj));
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+        col.innerHTML = `<div class='border rounded p-2 h-100 bg-white'>
+          <h6 class='mb-2' style='font-size:13px;'>${title}</h6>
+          <div>${
+            Object.keys(obj).length
+              ? ""
+              : '<div class="text-muted" style="font-size:11px;">No data</div>'
+          }</div>
+        </div>`;
+        const container = col.querySelector("div > div");
+        Object.entries(obj).forEach(([k, v]) => {
+          const row = document.createElement("div");
+          row.className = "mb-1";
+          row.innerHTML = `<div style='font-size:11px;'>${k}</div>
+            <div class='progress' style='height:6px;'>
+              <div class='progress-bar bg-success' style='width:${
+                (v / max) * 100
+              }%;'></div>
+            </div>
+            <div style='font-size:10px;' class='text-muted'>${v}</div>`;
+          container.appendChild(row);
+        });
+        return col;
+      }
+
+      function blockStore(rows) {
+        const col = document.createElement("div");
+        col.className = "col-md-4";
+        col.innerHTML = `<div class='border rounded p-2 h-100 bg-white'>
+          <h6 class='mb-2' style='font-size:13px;'>Top Store Items</h6>
+          <div id='storePerf'></div>
+        </div>`;
+        const target = col.querySelector("#storePerf");
+        if (!rows.length) {
+          target.innerHTML = `<div class='text-muted' style='font-size:11px;'>No completed orders</div>`;
+        } else {
+          rows.forEach((r) => {
+            const item = document.createElement("div");
+            item.className =
+              "d-flex justify-content-between border rounded px-2 py-1 mb-1";
+            item.style.fontSize = "11px";
+            item.innerHTML = `<span class='fw-bold'>${r.title}</span><span>${
+              r.quantity_sold
+            } sold</span><span class='text-success'>₦${Number(
+              r.revenue
+            ).toFixed(2)}</span>`;
+            target.appendChild(item);
+          });
+        }
+        return col;
+      }
+
+      function renderInsights(list) {
+        const wrap = document.getElementById("advisorInsights");
+        const ul = document.getElementById("advisorInsightList");
+        if (!wrap || !ul) return;
+        ul.innerHTML = "";
+        if (!list.length) {
+          ul.innerHTML = `<li class='list-group-item text-muted' style='font-size:12px;'>No insights yet. System needs more data.</li>`;
+        } else {
+          list.forEach((i) => {
+            const li = document.createElement("li");
+            li.className = "list-group-item";
+            li.style.fontSize = "12px";
+            li.innerHTML = `<div class='text-uppercase text-secondary fw-bold' style='font-size:10px;'>${
+              i.category || "general"
+            }</div>
+              <div>${i.insight_text}</div>`;
+            ul.appendChild(li);
+          });
+        }
+        wrap.style.display = "block";
+      }
+      let timeLeft = 45 * 60; // 45 minutes in seconds
+      let currentQuestion = 1;
+      let totalQuestions = 10;
+      let answers = {};
+
+      // Timer countdown
+      function updateTimer() {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        document.getElementById("timer").textContent = `${minutes
+          .toString()
+          .padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+        if (timeLeft <= 300) {
+          // Last 5 minutes
+          document.getElementById("timer").style.color = "#dc3545";
+        }
+
+        if (timeLeft <= 0) {
+          submitTest();
+          return;
+        }
+
+        timeLeft--;
+        setTimeout(updateTimer, 1000);
+      }
+
+      function submitTest() {
+        const score = Math.floor(Math.random() * 40) + 60; // Mock score 60-100
+        const completionTime = 45 * 60 - timeLeft;
+
+        // Send completion data to parent window (main ERP system)
+        if (
+          window.opener &&
+          !window.opener.closed &&
+          window.opener.recordCBTCompletion
+        ) {
+          window.opener.recordCBTCompletion({
+            testId: "sample-test-" + Date.now(),
+            score: score,
+            completionTime: completionTime,
+            answers: answers,
+          });
+        }
+
+        alert(`Test submitted successfully! Your score: ${score}%`);
+
+        // Close window or redirect
+        if (window.opener) {
+          window.close();
+        } else {
+          // If not opened from parent, redirect back to main application
+          window.location.href = "/";
+        }
+      }
+
+      // Initialize timer
+      updateTimer();
+
+      // Handle answer selection
+      document.querySelectorAll('input[name="answer"]').forEach((input) => {
+        input.addEventListener("change", function () {
+          answers[currentQuestion] = this.value;
+          console.log("Answer recorded:", answers);
+        });
+      });
+
+      // Submit button click handler
+      document
+        .getElementById("submitBtn")
+        .addEventListener("click", function (e) {
+          e.preventDefault();
+
+          if (
+            confirm(
+              "Are you sure you want to submit your test? This action cannot be undone."
+            )
+          ) {
+            submitTest();
+          }
+        });
+    </script>
+  </body>
+</html>

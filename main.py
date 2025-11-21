@@ -8,7 +8,10 @@ from fastapi import (
     Form,
     Query,
     Body,
+    UploadFile,
+    File,
 )
+from pathlib import Path
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, RedirectResponse
@@ -53,6 +56,10 @@ from dotenv import load_dotenv
 load_dotenv()
 templates = Jinja2Templates(directory="templates")
 app.include_router(payment_router)
+
+# Development helper endpoints (only enabled when ALLOW_DEV_ENDPOINTS=1 in env)
+import os
+
 
 # CORS
 app.add_middleware(
@@ -118,6 +125,241 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     return encoded_jwt
 
 
+# =============================
+# AI Advisor Helpers
+# =============================
+def record_metric(
+    db: Session,
+    metric_type: str,
+    value: float = 1.0,
+    user_id: Optional[str] = None,
+    context: Optional[Dict[str, Any]] = None,
+):
+    """Persist a lightweight metric event for later advisor analysis."""
+    try:
+        import uuid as _uuid
+        from models import AdvisorMetric
+
+        m = AdvisorMetric(
+            id=str(_uuid.uuid4()),
+            user_id=user_id,
+            metric_type=metric_type,
+            value=float(value),
+            context=context or None,
+        )
+        db.add(m)
+        db.commit()
+    except Exception as e:
+        try:
+            db.rollback()
+        except Exception:
+            pass
+        print(f"[advisor.metric] Failed to record metric {metric_type}: {e}")
+
+
+def generate_insights(db: Session, days: int = 30) -> Dict[str, Any]:
+    """Aggregate AdvisorMetric events plus live DB snapshots and generate richer insights.
+
+    Adds: student/teacher ratio, class size distribution, attendance %, exam pass rate,
+    unpaid fee count, store top sellers & low stock, review sentiment.
+    """
+    from models import (
+        AdvisorMetric,
+        AdvisorInsight,
+        Student,
+        Teacher,
+        Class,
+        Attendance,
+        Grade,
+        FeePayment,
+        StoreItem,
+        Order,
+        StoreReview,
+    )
+    import uuid as _uuid
+
+    window_start = datetime.utcnow() - timedelta(days=days)
+    metrics = (
+        db.query(AdvisorMetric).filter(AdvisorMetric.recorded_at >= window_start).all()
+    )
+    totals: Dict[str, float] = {}
+    for m in metrics:
+        totals[m.metric_type] = totals.get(m.metric_type, 0.0) + (m.value or 0.0)
+
+    # Live snapshots
+    student_count = db.query(func.count(Student.id)).scalar() or 0
+    teacher_count = db.query(func.count(Teacher.id)).scalar() or 0
+    class_rows = db.query(Class).all()
+    class_sizes = [int(getattr(c, "student_count", 0) or 0) for c in class_rows]
+    avg_class_size = (sum(class_sizes) / len(class_sizes)) if class_sizes else 0.0
+
+    recent_att = (
+        db.query(Attendance).filter(Attendance.date >= window_start.date()).all()
+    )
+    att_total = len(recent_att)
+    att_present = sum(
+        1 for a in recent_att if str(getattr(a, "status", "")).upper() == "PRESENT"
+    )
+    att_rate = (att_present / att_total) if att_total else 0.0
+
+    recent_grades = db.query(Grade).filter(Grade.created_at >= window_start).all()
+    grade_total = len(recent_grades)
+    grade_pass = sum(1 for g in recent_grades if getattr(g, "is_passed", False))
+    grade_pass_rate = (grade_pass / grade_total) if grade_total else 0.0
+
+    unpaid_fees = db.query(FeePayment).filter(FeePayment.status == "PENDING").count()
+    paid_fees = db.query(FeePayment).filter(FeePayment.status == "PAID").count()
+
+    orders_window = db.query(Order).filter(Order.created_at >= window_start).all()
+    item_sales: Dict[str, int] = {}
+    for o in orders_window:
+        for oi in o.items:
+            item_sales[oi.item_id] = item_sales.get(oi.item_id, 0) + oi.quantity
+    top_items = sorted(item_sales.items(), key=lambda x: x[1], reverse=True)[:5]
+    low_stock = db.query(StoreItem).filter(StoreItem.stock <= 3).all()
+
+    reviews = db.query(StoreReview).all()
+    avg_rating = (sum(r.rating for r in reviews) / len(reviews)) if reviews else 0.0
+
+    insights_created = []
+
+    def add(text: str, category: str, score: float):
+        insights_created.append(
+            AdvisorInsight(
+                id=str(_uuid.uuid4()),
+                user_id=None,
+                category=category,
+                insight_text=text,
+                score=score,
+            )
+        )
+
+    # Rules
+    if teacher_count > 0:
+        ratio = student_count / teacher_count if teacher_count else 0
+        if ratio > 30:
+            add(
+                f"High student/teacher ratio {ratio:.1f}; consider hiring or redistributing workload.",
+                "staffing",
+                0.85,
+            )
+        else:
+            add(
+                f"Healthy student/teacher ratio {ratio:.1f}; maintain staffing plan.",
+                "staffing",
+                0.55,
+            )
+    if avg_class_size > 0:
+        if avg_class_size > 35:
+            add(
+                f"Average class size {avg_class_size:.1f} large; explore splitting oversized classes.",
+                "classes",
+                0.8,
+            )
+        elif avg_class_size < 18:
+            add(
+                f"Average class size {avg_class_size:.1f} low; potential under-utilization of resources.",
+                "classes",
+                0.6,
+            )
+    if att_total > 20:
+        pct = att_rate * 100
+        if att_rate < 0.9:
+            add(
+                f"Attendance rate {pct:.1f}% below target; follow up with habitual absentees.",
+                "attendance",
+                0.9,
+            )
+        else:
+            add(
+                f"Strong attendance {pct:.1f}% maintain engagement initiatives.",
+                "attendance",
+                0.6,
+            )
+    if grade_total > 10:
+        g_pct = grade_pass_rate * 100
+        if grade_pass_rate < 0.7:
+            add(
+                f"Exam pass rate {g_pct:.1f}% indicates learning gaps; schedule remedial sessions.",
+                "academics",
+                0.9,
+            )
+        else:
+            add(
+                f"Pass rate {g_pct:.1f}% solid; consider enrichment for top performers.",
+                "academics",
+                0.5,
+            )
+    if unpaid_fees > 0:
+        add(
+            f"{unpaid_fees} unpaid fee records; prioritize fee follow-up to improve cash flow.",
+            "finance",
+            0.85,
+        )
+    if paid_fees > 0 and unpaid_fees == 0:
+        add(
+            "All tracked fees settled; evaluate early-payment incentives to keep trend.",
+            "finance",
+            0.5,
+        )
+    if top_items:
+        top_str = ", ".join(f"{iid}:{qty}" for iid, qty in top_items)
+        add(
+            f"Top selling items (qty): {top_str}; reorder to prevent stockouts.",
+            "store",
+            0.7,
+        )
+    if low_stock:
+        low_names = ", ".join((ls.title or "") for ls in low_stock[:5])
+        add(f"Low stock items: {low_names}; initiate replenishment.", "store", 0.75)
+    if avg_rating and avg_rating < 3:
+        add(
+            f"Average store rating {avg_rating:.2f} low; gather feedback & improve quality.",
+            "store",
+            0.8,
+        )
+    elif avg_rating >= 4.2:
+        add(
+            f"High satisfaction avg rating {avg_rating:.2f}; leverage testimonials in marketing.",
+            "store",
+            0.55,
+        )
+    sales_total = totals.get("sale_amount", 0.0)
+    logins = totals.get("login", 0.0)
+    if sales_total == 0 and logins > 0:
+        add(
+            "User activity detected but no sales; add store call-to-action on dashboard.",
+            "store",
+            0.9,
+        )
+
+    # Persist insights
+    for ins in insights_created:
+        try:
+            db.add(ins)
+            db.commit()
+        except Exception:
+            try:
+                db.rollback()
+            except Exception:
+                pass
+
+    return {
+        "totals": totals,
+        "snapshots": {
+            "students": student_count,
+            "teachers": teacher_count,
+            "avg_class_size": avg_class_size,
+            "attendance_rate": att_rate,
+            "exam_pass_rate": grade_pass_rate,
+            "unpaid_fees": unpaid_fees,
+            "paid_fees": paid_fees,
+            "avg_store_rating": avg_rating,
+        },
+        "insights": insights_created,
+    }
+
+
 def calculate_grade_letter(percentage: float) -> str:
     if percentage >= 90:
         return "A+"
@@ -171,15 +413,29 @@ async def get_current_user(
 
 def require_role(allowed_roles: List[UserRole]):
     async def role_checker(current_user: User = Depends(get_current_user)):
-        # current_user.role is an Enum value (ModelUserRole) — compare by value or name
-        user_role_value = (
-            current_user.role.value
-            if isinstance(current_user.role, UserRole)
-            else str(current_user.role)
-        )
-        allowed_values = [
-            r.value if isinstance(r, UserRole) else str(r) for r in allowed_roles
-        ]
+        # Normalize role comparison to be case-insensitive and robust.
+        # Avoid relying on the local name `UserRole` which may be shadowed
+        # by imports; instead inspect values dynamically.
+        try:
+            # If the stored role is an Enum instance from db_models, prefer its value
+            if isinstance(getattr(current_user, "role", None), db_models.UserRole):
+                raw_user_role = current_user.role.value
+            else:
+                raw_user_role = str(getattr(current_user, "role", ""))
+        except Exception:
+            raw_user_role = str(getattr(current_user, "role", ""))
+
+        user_role_value = (raw_user_role or "").lower()
+
+        allowed_values = []
+        for r in allowed_roles:
+            # Prefer .value when available on Enum-like objects, otherwise stringify
+            try:
+                val = r.value if hasattr(r, "value") else str(r)
+            except Exception:
+                val = str(r)
+            allowed_values.append((val or "").lower())
+
         if user_role_value not in allowed_values:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -297,6 +553,11 @@ async def dashboard_page(request: Request):
 @app.get("/payment")
 async def dashboard_page(request: Request):
     return templates.TemplateResponse("payment.html", {"request": request})
+
+
+@app.get("/store")
+async def store_page(request: Request):
+    return templates.TemplateResponse("store.html", {"request": request})
 
 
 @app.post(
@@ -457,7 +718,6 @@ async def login_for_access_token(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user account"
         )
 
-    # Clean up OTP storage after successful verification
     del otp_storage[email]
 
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -471,6 +731,9 @@ async def login_for_access_token(
         expires_delta=access_token_expires,
     )
 
+    # Record login metric
+    record_metric(db, "login", 1, user_id=user.id)
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -481,6 +744,7 @@ async def login_for_access_token(
             "role": (
                 user.role.value if isinstance(user.role, UserRole) else str(user.role)
             ),
+            "photo_url": getattr(user, "photo_url", None),
         },
     }
 
@@ -509,6 +773,87 @@ SAMPLE_CATALOG = [
 
 # In-memory carts per user (demo only)
 _CARTS = {}
+
+
+@app.get("/news/birthdays")
+async def upcoming_birthdays(
+    days: int = 30,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Return upcoming birthdays for students and teachers within the next N days.
+
+    Response shape matches frontend expectations:
+    { "birthdays": [ {"name": str, "type": "student|teacher", "date": ISODateString } ] }
+    """
+    today = date.today()
+    window_end = today + timedelta(days=days)
+
+    def next_occurrence(d: date) -> date:
+        if not d:
+            return None
+        try:
+            this_year = date(today.year, d.month, d.day)
+        except ValueError:
+            # Handle Feb 29 on non-leap years: move to Feb 28
+            if d.month == 2 and d.day == 29:
+                this_year = date(today.year, 2, 28)
+            else:
+                return None
+        if this_year < today:
+            try:
+                return date(today.year + 1, d.month, d.day)
+            except ValueError:
+                if d.month == 2 and d.day == 29:
+                    return date(today.year + 1, 2, 28)
+                return None
+        return this_year
+
+    results = []
+
+    # Students
+    students = db.query(db_models.Student).all()
+    for s in students:
+        dob = getattr(s, "dob", None)
+        if not dob:
+            continue
+        nxt = next_occurrence(dob)
+        if nxt and today <= nxt <= window_end:
+            results.append(
+                {
+                    "name": f"{s.first_name} {s.last_name}".strip(),
+                    "type": "student",
+                    "date": nxt.isoformat(),
+                }
+            )
+
+    # Teachers
+    teachers = db.query(db_models.Teacher).all()
+    for t in teachers:
+        dob = getattr(t, "date_of_birth", None)
+        if not dob:
+            continue
+        nxt = next_occurrence(dob)
+        if nxt and today <= nxt <= window_end:
+            results.append(
+                {
+                    "name": f"{t.first_name} {t.last_name}".strip(),
+                    "type": "teacher",
+                    "date": nxt.isoformat(),
+                }
+            )
+
+    results.sort(key=lambda x: x["date"])  # soonest first
+    if limit and limit > 0:
+        results = results[:limit]
+
+    return {"birthdays": results, "window_days": days}
+
+
+@app.get("/store/catalog")
+async def store_catalog():
+    return {"items": SAMPLE_CATALOG}
 
 
 @app.get("/dashboard/stats")
@@ -557,89 +902,6 @@ async def class_distribution(
             )
             counts.append(int(cnt))
     return {"labels": labels, "counts": counts}
-
-
-def _next_birthday(dob: Optional[date]):
-    if not dob:
-        return None
-    today = date.today()
-    try:
-        this_year = date(today.year, dob.month, dob.day)
-    except Exception:
-        return None
-    if this_year >= today:
-        return this_year
-    return date(today.year + 1, dob.month, dob.day)
-
-
-@app.get("/news/birthdays")
-async def upcoming_birthdays(
-    db: Session = Depends(get_db),
-    current_user: db_models.User = Depends(get_current_user),
-):
-    # Collect upcoming birthdays for students and teachers in the next 30 days
-    upcoming = []
-    horizon_days = 30
-    all_students = db.query(db_models.Student).all()
-    for s in all_students:
-        bd = getattr(s, "dob", None)
-        nb = _next_birthday(bd)
-        if not nb:
-            continue
-        delta = (nb - date.today()).days
-        if 0 <= delta <= horizon_days:
-            upcoming.append(
-                {
-                    "type": "student",
-                    "name": f"{s.first_name} {s.last_name}",
-                    "date": nb.isoformat(),
-                }
-            )
-
-    all_teachers = db.query(db_models.Teacher).all()
-    for t in all_teachers:
-        bd = getattr(t, "date_of_birth", None)
-        nb = _next_birthday(bd)
-        if not nb:
-            continue
-        delta = (nb - date.today()).days
-        if 0 <= delta <= horizon_days:
-            upcoming.append(
-                {
-                    "type": "teacher",
-                    "name": f"{t.first_name} {t.last_name}",
-                    "date": nb.isoformat(),
-                }
-            )
-
-    # sort by date
-    upcoming_sorted = sorted(upcoming, key=lambda x: x["date"]) if upcoming else []
-    return {"birthdays": upcoming_sorted}
-
-
-@app.get("/store/catalog")
-async def store_catalog(
-    db: Session = Depends(get_db),
-    current_user: db_models.User = Depends(get_current_user),
-):
-    items = (
-        db.query(db_models.StoreItem)
-        .order_by(db_models.StoreItem.created_at.desc())
-        .all()
-    )
-    result = []
-    for it in items:
-        result.append(
-            {
-                "id": it.id,
-                "title": it.title,
-                "description": it.description,
-                "price": it.price,
-                "stock": it.stock,
-                "image_url": it.image_url,
-            }
-        )
-    return {"items": result}
 
 
 @app.get("/store/cart")
@@ -772,8 +1034,24 @@ async def checkout(
     order.status = "placed"
     db.add(order)
     db.commit()
-
-    return {"message": "Checkout successful", "total": total, "order_id": order.id}
+    # Record sale metrics
+    try:
+        record_metric(
+            db,
+            "sale_amount",
+            total,
+            user_id=uid,
+            context={"order_id": order.id, "item_count": len(order.items)},
+        )
+    except Exception:
+        pass
+    # Optional: bridge to payment initialization (frontend can decide)
+    return {
+        "message": "Checkout successful",
+        "total": total,
+        "order_id": order.id,
+        "next": "/payment",  # frontend can redirect to payment page/modal
+    }
 
 
 @app.post("/store/items", status_code=status.HTTP_201_CREATED)
@@ -795,6 +1073,16 @@ async def create_store_item(
     db.add(db_item)
     db.commit()
     db.refresh(db_item)
+    try:
+        record_metric(
+            db,
+            "store_item_created",
+            1,
+            user_id=getattr(current_user, "id", None),
+            context={"item_id": db_item.id, "stock": db_item.stock},
+        )
+    except Exception:
+        pass
     return {
         "id": db_item.id,
         "title": db_item.title,
@@ -805,11 +1093,551 @@ async def create_store_item(
     }
 
 
+@app.post("/store/upload-image")
+async def upload_store_image(
+    file: UploadFile = File(...),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    # rudimentary validation
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+    import os, uuid
+
+    uploads_dir = os.path.join("static", "uploads")
+    os.makedirs(uploads_dir, exist_ok=True)
+    ext = os.path.splitext(file.filename or "")[1] or ".jpg"
+    fname = f"store_{uuid.uuid4().hex}{ext}"
+    dest_path = os.path.join(uploads_dir, fname)
+    with open(dest_path, "wb") as out:
+        out.write(await file.read())
+    url = f"/static/uploads/{fname}"
+    return {"url": url}
+
+
+@app.get(
+    "/store/items/{item_id}/reviews", response_model=List[schema_models.StoreReview]
+)
+async def get_item_reviews(
+    item_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    revs = (
+        db.query(db_models.StoreReview)
+        .filter(db_models.StoreReview.item_id == item_id)
+        .order_by(db_models.StoreReview.created_at.desc())
+        .all()
+    )
+    return revs
+
+
+@app.get("/store/my-review")
+async def get_my_review(
+    item_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    r = (
+        db.query(db_models.StoreReview)
+        .filter(db_models.StoreReview.item_id == item_id)
+        .filter(db_models.StoreReview.user_id == current_user.id)
+        .first()
+    )
+    if not r:
+        return {"exists": False}
+    return {
+        "exists": True,
+        "id": r.id,
+        "item_id": r.item_id,
+        "user_id": r.user_id,
+        "rating": r.rating,
+        "comment": r.comment,
+        "created_at": r.created_at,
+    }
+
+
+@app.post("/store/items/{item_id}/reviews", response_model=schema_models.StoreReview)
+async def upsert_review(
+    item_id: str,
+    payload: schema_models.StoreReviewCreate,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    if payload.item_id != item_id:
+        raise HTTPException(status_code=400, detail="Mismatched item_id")
+    # ensure item exists
+    item = (
+        db.query(db_models.StoreItem).filter(db_models.StoreItem.id == item_id).first()
+    )
+    if not item:
+        raise HTTPException(status_code=404, detail="Item not found")
+    # find existing review
+    r = (
+        db.query(db_models.StoreReview)
+        .filter(db_models.StoreReview.item_id == item_id)
+        .filter(db_models.StoreReview.user_id == current_user.id)
+        .first()
+    )
+    now = datetime.utcnow()
+    if r:
+        r.rating = payload.rating
+        r.comment = payload.comment
+        # keep created_at as original
+        db.add(r)
+    else:
+        r = db_models.StoreReview(
+            id=str(uuid.uuid4()),
+            item_id=item_id,
+            user_id=current_user.id,
+            rating=payload.rating,
+            comment=payload.comment,
+            created_at=now,
+        )
+        db.add(r)
+    db.commit()
+    db.refresh(r)
+    try:
+        record_metric(
+            db,
+            "review_submitted",
+            1,
+            user_id=current_user.id,
+            context={"item_id": item_id, "rating": r.rating},
+        )
+    except Exception:
+        pass
+    return r
+
+
+# -------------------------
+# Photo Journals (Albums)
+# -------------------------
+@app.post("/photo-journals/albums")
+async def upload_photo_album(
+    title: str = Form(...),
+    description: Optional[str] = Form(None),
+    images: List[UploadFile] = File(...),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(
+        require_role([UserRole.ADMIN, UserRole.STAFF])
+    ),
+):
+    if not images or len(images) == 0:
+        raise HTTPException(status_code=400, detail="At least one image is required")
+    import os
+    import uuid as _uuid
+
+    album_id = str(_uuid.uuid4())
+    base = Path(__file__).resolve().parent
+    album_dir = base.joinpath("static", "uploads", "photo_journals", album_id)
+    album_dir.mkdir(parents=True, exist_ok=True)
+
+    photo_urls = []
+    for f in images:
+        if not f.content_type or not f.content_type.startswith("image/"):
+            continue
+        ext = Path(f.filename or "").suffix or ".jpg"
+        fname = f"img_{_uuid.uuid4().hex}{ext}"
+        dest = album_dir.joinpath(fname)
+        dest.write_bytes(await f.read())
+        photo_urls.append(f"/static/uploads/photo_journals/{album_id}/{fname}")
+
+    if not photo_urls:
+        raise HTTPException(status_code=400, detail="No valid image files uploaded")
+
+    album = db_models.PhotoAlbum(
+        id=album_id,
+        title=title,
+        description=description,
+        cover_url=photo_urls[0],
+        created_by=getattr(current_user, "id", None),
+        created_at=datetime.utcnow(),
+    )
+    db.add(album)
+    db.flush()
+
+    for url in photo_urls:
+        ph = db_models.PhotoAlbumPhoto(
+            id=str(_uuid.uuid4()),
+            album_id=album.id,
+            image_url=url,
+            caption=None,
+            created_at=datetime.utcnow(),
+        )
+        db.add(ph)
+
+    db.commit()
+    db.refresh(album)
+
+    photos = (
+        db.query(db_models.PhotoAlbumPhoto)
+        .filter(db_models.PhotoAlbumPhoto.album_id == album.id)
+        .all()
+    )
+    return {
+        "id": album.id,
+        "title": album.title,
+        "description": album.description,
+        "cover_url": album.cover_url,
+        "created_at": album.created_at,
+        "photos": [{"id": p.id, "image_url": p.image_url} for p in photos],
+    }
+
+
+@app.get("/photo-journals/albums")
+async def list_photo_albums(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    albums = (
+        db.query(db_models.PhotoAlbum)
+        .order_by(db_models.PhotoAlbum.created_at.desc())
+        .all()
+    )
+    out = []
+    for a in albums:
+        count = (
+            db.query(func.count(db_models.PhotoAlbumPhoto.id))
+            .filter(db_models.PhotoAlbumPhoto.album_id == a.id)
+            .scalar()
+            or 0
+        )
+        out.append(
+            {
+                "id": a.id,
+                "title": a.title,
+                "description": a.description,
+                "cover_url": a.cover_url,
+                "created_at": a.created_at,
+                "photo_count": int(count),
+            }
+        )
+    return {"albums": out}
+
+
+@app.get("/photo-journals/albums/{album_id}")
+async def get_photo_album(
+    album_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    a = (
+        db.query(db_models.PhotoAlbum)
+        .filter(db_models.PhotoAlbum.id == album_id)
+        .first()
+    )
+    if not a:
+        raise HTTPException(status_code=404, detail="Album not found")
+    photos = (
+        db.query(db_models.PhotoAlbumPhoto)
+        .filter(db_models.PhotoAlbumPhoto.album_id == a.id)
+        .order_by(db_models.PhotoAlbumPhoto.created_at.asc())
+        .all()
+    )
+    return {
+        "id": a.id,
+        "title": a.title,
+        "description": a.description,
+        "cover_url": a.cover_url,
+        "created_at": a.created_at,
+        "photos": [
+            {"id": p.id, "image_url": p.image_url, "caption": p.caption} for p in photos
+        ],
+    }
+
+
 @app.get("/auth/me", response_model=schema_models.User)
 async def get_current_user_info(
     current_user: db_models.User = Depends(get_current_user),
 ):
     return current_user
+
+
+@app.put("/auth/me", response_model=schema_models.User)
+async def update_current_user_info(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    # Only allow updating a small set of user fields from the UI
+    allowed = {"full_name", "phone", "email"}
+    changed = False
+    for k, v in payload.items():
+        if k in allowed and v is not None:
+            v_str = str(v).strip()
+            if v_str == "":
+                # ignore attempts to set empty strings
+                continue
+            setattr(current_user, k, v_str)
+            changed = True
+    if changed:
+        db.add(current_user)
+        db.commit()
+        db.refresh(current_user)
+    return current_user
+
+
+@app.post("/auth/avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files allowed")
+    import uuid
+
+    try:
+        base = Path(__file__).resolve().parent
+        avatar_dir = base.joinpath("static", "uploads", "avatars")
+        avatar_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename or "").suffix or ".jpg"
+        fname = f"avatar_{uuid.uuid4().hex}{ext}"
+        dest = avatar_dir.joinpath(fname)
+        contents = await file.read()
+        dest.write_bytes(contents)
+        url = f"/static/uploads/avatars/{fname}"
+    except Exception as e:
+        # Surface helpful error to client and log
+        print(f"Avatar save error: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to save avatar: {e}")
+    current_user.photo_url = url
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return {"photo_url": url}
+
+
+@app.delete("/auth/avatar")
+async def delete_avatar(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    current_user.photo_url = None
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return {"photo_url": None}
+
+
+# --- Messages endpoints (feed + moderation) ---
+@app.get("/messages")
+async def get_messages(db: Session = Depends(get_db)):
+    # return approved messages with user info
+    msgs = (
+        db.query(db_models.Message)
+        .filter(db_models.Message.approved == True)
+        .order_by(db_models.Message.created_at.desc())
+        .limit(200)
+        .all()
+    )
+    out = []
+    for m in msgs:
+        u = db.query(db_models.User).filter(db_models.User.id == m.user_id).first()
+        out.append(
+            {
+                "id": m.id,
+                "content": m.content,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "user": {
+                    "id": u.id if u else None,
+                    "full_name": u.full_name if u else None,
+                    "photo_url": getattr(u, "photo_url", None) if u else None,
+                },
+            }
+        )
+    return out
+
+
+@app.post("/messages")
+async def post_message(
+    payload: dict = Body(...),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    content = (payload.get("content") or "").strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Empty message")
+    import uuid
+
+    approved = False
+    # auto-approve if admin
+    role_val = (
+        current_user.role.value
+        if isinstance(current_user.role, db_models.UserRole)
+        else str(current_user.role)
+    )
+    if role_val and role_val.lower() == "admin":
+        approved = True
+
+    m = db_models.Message(
+        id=str(uuid.uuid4()),
+        user_id=current_user.id,
+        content=content,
+        approved=approved,
+    )
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {
+        "id": m.id,
+        "content": m.content,
+        "approved": m.approved,
+        "status": "approved" if m.approved else "pending",
+        "created_at": m.created_at.isoformat() if m.created_at else None,
+    }
+
+
+@app.get("/messages/pending")
+async def get_pending_messages(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([db_models.UserRole.ADMIN])),
+):
+    # Debug log to help trace authorization issues in dev
+    try:
+        print(
+            f"/messages/pending requested by user_id={getattr(current_user,'id',None)} role={getattr(current_user,'role',None)}"
+        )
+    except Exception:
+        pass
+    msgs = (
+        db.query(db_models.Message)
+        .filter(db_models.Message.approved == False)
+        .order_by(db_models.Message.created_at.asc())
+        .all()
+    )
+    out = []
+    for m in msgs:
+        u = db.query(db_models.User).filter(db_models.User.id == m.user_id).first()
+        out.append(
+            {
+                "id": m.id,
+                "content": m.content,
+                "created_at": m.created_at.isoformat() if m.created_at else None,
+                "user": {
+                    "id": u.id if u else None,
+                    "full_name": u.full_name if u else None,
+                    "photo_url": getattr(u, "photo_url", None) if u else None,
+                },
+            }
+        )
+    return out
+
+
+@app.post("/messages/{msg_id}/approve")
+async def approve_message(
+    msg_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([db_models.UserRole.ADMIN])),
+):
+    m = db.query(db_models.Message).filter(db_models.Message.id == msg_id).first()
+    if not m:
+        raise HTTPException(status_code=404, detail="Message not found")
+    m.approved = True
+    db.add(m)
+    db.commit()
+    db.refresh(m)
+    return {"id": m.id, "approved": m.approved}
+
+
+@app.delete("/messages/{msg_id}")
+async def delete_message(
+    msg_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([db_models.UserRole.ADMIN])),
+):
+    m = db.query(db_models.Message).filter(db_models.Message.id == msg_id).first()
+    if not m:
+        raise HTTPException(status_code=404, detail="Message not found")
+    db.delete(m)
+    db.commit()
+    return {"deleted": True}
+
+
+# Dev helper: create test users, sample messages, and return JWT tokens
+@app.post("/dev/create_test_tokens")
+async def dev_create_test_tokens(db: Session = Depends(get_db)):
+    """Create a test admin and user and return bearer tokens.
+    This endpoint is only active when environment variable ALLOW_DEV_ENDPOINTS=1.
+    """
+    if os.getenv("ALLOW_DEV_ENDPOINTS", "0") != "1":
+        raise HTTPException(status_code=404, detail="Not found")
+
+    import uuid
+    from datetime import datetime
+
+    def ensure_user(email, full_name, role, password="devpass"):
+        u = (
+            db.query(db_models.User)
+            .filter(func.lower(db_models.User.email) == email.lower())
+            .first()
+        )
+        if u:
+            return u
+        hashed = get_password_hash(password)
+        role_val = role.value if isinstance(role, db_models.UserRole) else str(role)
+        u = db_models.User(
+            id=str(uuid.uuid4()),
+            email=email,
+            full_name=full_name,
+            role=role_val,
+            hashed_password=hashed,
+            is_active=True,
+            created_at=datetime.utcnow(),
+        )
+        db.add(u)
+        db.commit()
+        db.refresh(u)
+        return u
+
+    admin = ensure_user("dev_admin@local", "Dev Admin", db_models.UserRole.ADMIN)
+    user = ensure_user("dev_user@local", "Dev User", "parent")
+
+    # create a sample approved announcement by admin
+    existing = (
+        db.query(db_models.Message)
+        .filter(db_models.Message.content == "Welcome to the demo feed")
+        .first()
+    )
+    if not existing:
+        m = db_models.Message(
+            id=str(uuid.uuid4()),
+            user_id=admin.id,
+            content="Welcome to the demo feed",
+            approved=True,
+            created_at=datetime.utcnow(),
+        )
+        db.add(m)
+        db.commit()
+
+    # return tokens
+    admin_token = create_access_token(
+        {
+            "sub": admin.id,
+            "role": (
+                admin.role.value
+                if isinstance(admin.role, db_models.UserRole)
+                else str(admin.role)
+            ),
+        },
+        expires_delta=timedelta(days=7),
+    )
+    user_token = create_access_token(
+        {
+            "sub": user.id,
+            "role": (
+                user.role.value
+                if isinstance(user.role, db_models.UserRole)
+                else str(user.role)
+            ),
+        },
+        expires_delta=timedelta(days=7),
+    )
+
+    return {
+        "admin": {"email": admin.email, "token": admin_token},
+        "user": {"email": user.email, "token": user_token},
+    }
 
 
 import uuid
@@ -882,6 +1710,21 @@ async def create_student(
 
         db.commit()
         db.refresh(db_student)
+        # Advisor metric: student created
+        try:
+            record_metric(
+                db,
+                "student_created",
+                1,
+                user_id=getattr(current_user, "id", None),
+                context={
+                    "student_id": db_student.id,
+                    "gender": getattr(db_student, "gender", None),
+                    "class_id": getattr(db_student, "class_id", None),
+                },
+            )
+        except Exception:
+            pass
 
         return db_student
 
@@ -944,7 +1787,260 @@ async def get_student(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
         )
-    return student
+    # Attach photo_url from linked user if available
+    photo_url = None
+    if getattr(student, "user_id", None):
+        u = (
+            db.query(db_models.User)
+            .filter(db_models.User.id == student.user_id)
+            .first()
+        )
+        if u:
+            photo_url = getattr(u, "photo_url", None)
+    # Build response dict to include photo_url
+    return StudentResponse(
+        id=student.id,
+        user_id=student.user_id,
+        first_name=student.first_name,
+        last_name=student.last_name,
+        dob=student.dob,
+        gender=student.gender,
+        admission_no=student.admission_no,
+        class_id=student.class_id,
+        enrollment_date=student.enrollment_date,
+        is_active=student.is_active,
+        created_at=student.created_at,
+        updated_at=student.updated_at,
+        photo_url=photo_url,
+    )
+
+
+@app.get("/students/{student_id}/full")
+async def get_student_full(
+    student_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Return full student profile for admin view (includes user info, class, grades, attendance, fees)."""
+    student = (
+        db.query(db_models.Student).filter(db_models.Student.id == student_id).first()
+    )
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
+        )
+
+    user = None
+    if getattr(student, "user_id", None):
+        user = (
+            db.query(db_models.User)
+            .filter(db_models.User.id == student.user_id)
+            .first()
+        )
+
+    class_obj = None
+    if getattr(student, "class_id", None):
+        class_obj = (
+            db.query(db_models.Class)
+            .filter(db_models.Class.id == student.class_id)
+            .first()
+        )
+
+    grades_q = (
+        db.query(db_models.Grade).filter(db_models.Grade.student_id == student_id).all()
+    )
+    grades = []
+    for g in grades_q:
+        grades.append(
+            {
+                "exam": (
+                    getattr(g.exam, "name", None) if getattr(g, "exam", None) else None
+                ),
+                "marks_obtained": g.marks_obtained,
+                "percentage": g.percentage,
+                "grade_letter": g.grade_letter,
+                "recorded_at": g.created_at.isoformat() if g.created_at else None,
+            }
+        )
+
+    attendances_q = (
+        db.query(db_models.Attendance)
+        .filter(db_models.Attendance.student_id == student_id)
+        .order_by(db_models.Attendance.date.desc())
+        .limit(20)
+        .all()
+    )
+    attendances = [
+        {
+            "date": a.date.isoformat(),
+            "status": a.status.name if hasattr(a.status, "name") else str(a.status),
+            "remarks": a.remarks,
+        }
+        for a in attendances_q
+    ]
+
+    fees_q = (
+        db.query(db_models.FeePayment)
+        .filter(db_models.FeePayment.student_id == student_id)
+        .all()
+    )
+    fees = [
+        {
+            "amount_paid": f.amount_paid,
+            "date": f.payment_date.isoformat() if f.payment_date else None,
+            "status": str(getattr(f, "status", None)),
+        }
+        for f in fees_q
+    ]
+
+    submissions_count = (
+        db.query(func.count(db_models.AssignmentSubmission.id))
+        .filter(db_models.AssignmentSubmission.student_id == student_id)
+        .scalar()
+        or 0
+    )
+
+    # photo_url may be stored on User or Student.user.profile attrs depending on your schema; use getattr fallback
+    photo_url = None
+    if user:
+        photo_url = getattr(user, "photo_url", None) or getattr(user, "avatar", None)
+
+    result = {
+        "student": {
+            "id": student.id,
+            "first_name": student.first_name,
+            "last_name": student.last_name,
+            "gender": student.gender,
+            "admission_no": student.admission_no,
+            "class_id": student.class_id,
+            "photo_url": photo_url,
+        },
+        "user": {
+            "email": getattr(user, "email", None) if user else None,
+            "phone": getattr(user, "phone", None) if user else None,
+        },
+        "class": {
+            "id": getattr(class_obj, "id", None) if class_obj else None,
+            "name": getattr(class_obj, "name", None) if class_obj else None,
+        },
+        "grades": grades,
+        "recent_attendance": attendances,
+        "fees": fees,
+        "assignment_submissions_count": submissions_count,
+    }
+
+    return result
+
+    @app.patch("/students/{student_id}", response_model=StudentResponse)
+    async def update_student(
+        student_id: str,
+        payload: StudentUpdate,
+        db: Session = Depends(get_db),
+        current_user: db_models.User = Depends(
+            require_role([UserRole.ADMIN, UserRole.STAFF])
+        ),
+    ):
+        """Partial update of a student's record and linked user photo."""
+        student = (
+            db.query(db_models.Student)
+            .filter(db_models.Student.id == student_id)
+            .first()
+        )
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+
+        # Update student fields if provided
+        fields = [
+            "first_name",
+            "last_name",
+            "dob",
+            "gender",
+            "admission_no",
+            "class_id",
+        ]
+        for f in fields:
+            val = getattr(payload, f, None)
+            if val is not None:
+                setattr(student, f, val)
+
+        # Update linked user phone/photo if provided
+        user = None
+        if getattr(student, "user_id", None):
+            user = (
+                db.query(db_models.User)
+                .filter(db_models.User.id == student.user_id)
+                .first()
+            )
+            if user:
+                if payload.phone is not None:
+                    user.phone = payload.phone
+                if payload.photo_url is not None:
+                    user.photo_url = payload.photo_url
+                db.add(user)
+
+        student.updated_at = datetime.utcnow()
+        db.add(student)
+        db.commit()
+        db.refresh(student)
+        photo_url = getattr(user, "photo_url", None) if user else None
+        try:
+            record_metric(
+                db,
+                "student_updated",
+                1,
+                user_id=getattr(current_user, "id", None),
+                context={"student_id": student.id},
+            )
+        except Exception:
+            pass
+        return StudentResponse(
+            id=student.id,
+            user_id=student.user_id,
+            first_name=student.first_name,
+            last_name=student.last_name,
+            dob=student.dob,
+            gender=student.gender,
+            admission_no=student.admission_no,
+            class_id=student.class_id,
+            enrollment_date=student.enrollment_date,
+            is_active=student.is_active,
+            created_at=student.created_at,
+            updated_at=student.updated_at,
+            photo_url=photo_url,
+        )
+
+    @app.delete("/students/{student_id}")
+    async def delete_student(
+        student_id: str,
+        db: Session = Depends(get_db),
+        current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+    ):
+        """Delete a student and optionally their linked user account."""
+        student = (
+            db.query(db_models.Student)
+            .filter(db_models.Student.id == student_id)
+            .first()
+        )
+        if not student:
+            raise HTTPException(status_code=404, detail="Student not found")
+        user_id = getattr(student, "user_id", None)
+        db.delete(student)
+        if user_id:
+            usr = db.query(db_models.User).filter(db_models.User.id == user_id).first()
+            if usr:
+                db.delete(usr)
+        db.commit()
+        try:
+            record_metric(
+                db,
+                "student_deleted",
+                1,
+                user_id=getattr(current_user, "id", None),
+                context={"student_id": student_id},
+            )
+        except Exception:
+            pass
+        return {"status": "deleted", "student_id": student_id}
 
 
 @app.put(
@@ -952,7 +2048,7 @@ async def get_student(
 )  # Use StudentResponse
 async def update_student(
     student_id: str,
-    student_update: StudentBase,
+    student_update: schema_models.StudentUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.ADMIN, UserRole.STAFF])),
 ):
@@ -972,38 +2068,6 @@ async def update_student(
     db.commit()
     db.refresh(student)
     return student
-
-
-@app.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_student(
-    student_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_role([UserRole.ADMIN])),
-):
-    student = (
-        db.query(db_models.Student).filter(db_models.Student.id == student_id).first()
-    )
-    if not student:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Student not found"
-        )
-
-    # decrement class count if applicable
-    if student.class_id:
-        class_obj = (
-            db.query(db_models.Class)
-            .filter(db_models.Class.id == student.class_id)
-            .first()
-        )
-        if class_obj and (class_obj.student_count or 0) > 0:
-            class_obj.student_count -= 1
-            db.add(class_obj)
-
-    # soft-delete (deactivate)
-    student.is_active = False
-    db.add(student)
-    db.commit()
-    return None
 
 
 # =============================================================================
@@ -1063,6 +2127,20 @@ async def create_teacher(
     try:
         db.commit()
         db.refresh(db_teacher)
+        # Advisor metric: teacher created
+        try:
+            record_metric(
+                db,
+                "teacher_created",
+                1,
+                user_id=getattr(current_user, "id", None),
+                context={
+                    "teacher_id": db_teacher.id,
+                    "subject": getattr(db_teacher, "specialization", None),
+                },
+            )
+        except Exception:
+            pass
         return db_teacher
     except Exception as e:
         db.rollback()
@@ -1097,6 +2175,59 @@ async def get_teacher(
             status_code=status.HTTP_404_NOT_FOUND, detail="Teacher not found"
         )
     return teacher
+
+
+@app.put("/teachers/{teacher_id}", response_model=TeacherResponse)
+async def update_teacher(
+    teacher_id: str,
+    payload: schema_models.TeacherUpdate,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    teacher = (
+        db.query(db_models.Teacher).filter(db_models.Teacher.id == teacher_id).first()
+    )
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    for k, v in payload.dict(exclude_unset=True).items():
+        setattr(teacher, k, v)
+    teacher.updated_at = datetime.utcnow()
+    db.add(teacher)
+    db.commit()
+    db.refresh(teacher)
+    return teacher
+
+
+@app.delete("/teachers/{teacher_id}")
+async def delete_teacher(
+    teacher_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    """Delete a teacher and optionally their linked user account."""
+    teacher = (
+        db.query(db_models.Teacher).filter(db_models.Teacher.id == teacher_id).first()
+    )
+    if not teacher:
+        raise HTTPException(status_code=404, detail="Teacher not found")
+    user_id = getattr(teacher, "user_id", None)
+    db.delete(teacher)
+    if user_id:
+        usr = db.query(db_models.User).filter(db_models.User.id == user_id).first()
+        if usr:
+            db.delete(usr)
+    db.commit()
+    try:
+        record_metric(
+            db,
+            "teacher_deleted",
+            1,
+            user_id=getattr(current_user, "id", None),
+            context={"teacher_id": teacher_id},
+        )
+    except Exception:
+        pass
+    return {"status": "deleted", "teacher_id": teacher_id}
 
 
 # =============================================================================
@@ -1214,6 +2345,13 @@ async def mark_attendance(
     db.add(db_att)
     db.commit()
     db.refresh(db_att)
+    # Record attendance metrics
+    try:
+        if attendance.status.name == "PRESENT":
+            record_metric(db, "attendance_present", 1, user_id=attendance.student_id)
+        record_metric(db, "attendance_marked", 1, user_id=attendance.student_id)
+    except Exception:
+        pass
     return db_att
 
 
@@ -1395,7 +2533,358 @@ async def create_grade(
     db.add(db_grade)
     db.commit()
     db.refresh(db_grade)
+    # Advisor metrics for grades
+    try:
+        record_metric(
+            db,
+            "grade_recorded",
+            1,
+            user_id=getattr(current_user, "id", None),
+            context={
+                "grade_id": db_grade.id,
+                "student_id": db_grade.student_id,
+                "exam_id": db_grade.exam_id,
+                "percentage": db_grade.percentage,
+                "grade_letter": db_grade.grade_letter,
+                "is_passed": db_grade.is_passed,
+            },
+        )
+        record_metric(
+            db,
+            "grade_pass" if db_grade.is_passed else "grade_fail",
+            1,
+            user_id=getattr(current_user, "id", None),
+            context={
+                "grade_id": db_grade.id,
+                "student_id": db_grade.student_id,
+                "exam_id": db_grade.exam_id,
+                "percentage": db_grade.percentage,
+                "grade_letter": db_grade.grade_letter,
+            },
+        )
+    except Exception:
+        pass
     return db_grade  # Removed .from_orm() - FastAPI handles this automatically
+
+
+# =============================
+# AI Advisor Endpoints
+# =============================
+@app.get("/advisor/recommendations")
+async def advisor_recommendations(
+    days: int = Query(30, ge=1, le=120),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(
+        require_role([UserRole.ADMIN, UserRole.STAFF])
+    ),
+):
+    result = generate_insights(db, days=days)
+    return {
+        "generated_at": datetime.utcnow().isoformat(),
+        "metrics_window_days": days,
+        "metrics": result["totals"],
+        "snapshots": result["snapshots"],
+        "insights": [
+            {
+                "id": i.id,
+                "category": i.category,
+                "insight_text": i.insight_text,
+                "score": i.score,
+                "created_at": i.created_at.isoformat() if i.created_at else None,
+            }
+            for i in result["insights"]
+        ],
+    }
+
+
+@app.get("/advisor/metrics")
+async def advisor_metrics(
+    metric_type: Optional[str] = None,
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    from models import AdvisorMetric
+
+    q = db.query(AdvisorMetric).order_by(AdvisorMetric.recorded_at.desc())
+    if metric_type:
+        q = q.filter(AdvisorMetric.metric_type == metric_type)
+    rows = q.limit(limit).all()
+    return [
+        {
+            "id": r.id,
+            "user_id": r.user_id,
+            "metric_type": r.metric_type,
+            "value": r.value,
+            "recorded_at": r.recorded_at.isoformat() if r.recorded_at else None,
+            "context": r.context,
+        }
+        for r in rows
+    ]
+
+
+# =============================
+# Mailbox / Messaging Endpoints
+# =============================
+@app.post("/mail/send", response_model=schema_models.MailMessage)
+async def send_mail_message(
+    payload: schema_models.MailMessageCreate,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Send a mail message from the logged-in user's email to recipient.
+
+    Creates a new MailMessage row referencing sender/recipient emails.
+    """
+    from models import MailMessage as MailMessageModel
+
+    # basic validation: cannot send to self for now allowed but warn
+    msg = MailMessageModel(
+        id=str(uuid.uuid4()),
+        sender_email=current_user.email,
+        recipient_email=payload.recipient_email,
+        subject=payload.subject.strip(),
+        body=payload.body.strip(),
+        thread_id=payload.thread_id,
+        created_at=datetime.utcnow(),
+    )
+    db.add(msg)
+    db.commit()
+    db.refresh(msg)
+    try:
+        record_metric(
+            db,
+            "mail_sent",
+            1,
+            user_id=getattr(current_user, "id", None),
+            context={"recipient": payload.recipient_email},
+        )
+    except Exception:
+        pass
+    return msg
+
+
+@app.get("/mail/inbox", response_model=List[schema_models.MailMessageSummary])
+async def inbox_messages(
+    unread_only: bool = Query(False),
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Fetch inbox messages for current user's email."""
+    from models import MailMessage as MailMessageModel
+
+    q = (
+        db.query(MailMessageModel)
+        .filter(MailMessageModel.recipient_email == current_user.email)
+        .order_by(MailMessageModel.created_at.desc())
+    )
+    if unread_only:
+        q = q.filter(MailMessageModel.is_read == False)  # noqa: E712
+    rows = q.limit(limit).all()
+    return [
+        schema_models.MailMessageSummary(
+            id=r.id,
+            sender_email=r.sender_email,
+            subject=r.subject,
+            is_read=r.is_read,
+            created_at=r.created_at,
+            thread_id=r.thread_id,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/mail/sent", response_model=List[schema_models.MailMessageSummary])
+async def sent_messages(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Fetch sent messages authored by current user."""
+    from models import MailMessage as MailMessageModel
+
+    rows = (
+        db.query(MailMessageModel)
+        .filter(MailMessageModel.sender_email == current_user.email)
+        .order_by(MailMessageModel.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        schema_models.MailMessageSummary(
+            id=r.id,
+            sender_email=r.sender_email,
+            subject=r.subject,
+            is_read=r.is_read,
+            created_at=r.created_at,
+            thread_id=r.thread_id,
+        )
+        for r in rows
+    ]
+
+
+@app.get("/mail/{message_id}", response_model=schema_models.MailMessage)
+async def get_mail_message(
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Retrieve a single mail message if sender or recipient matches current user."""
+    from models import MailMessage as MailMessageModel
+
+    msg = db.query(MailMessageModel).filter(MailMessageModel.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if (
+        msg.sender_email != current_user.email
+        and msg.recipient_email != current_user.email
+    ):
+        raise HTTPException(status_code=403, detail="Not authorized to view message")
+    return schema_models.MailMessage(
+        id=msg.id,
+        sender_email=msg.sender_email,
+        recipient_email=msg.recipient_email,
+        subject=msg.subject,
+        body=msg.body,
+        is_read=msg.is_read,
+        created_at=msg.created_at,
+        thread_id=msg.thread_id,
+    )
+
+
+@app.post("/mail/{message_id}/read")
+async def mark_mail_read(
+    message_id: str,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Mark a mail message as read (recipient only)."""
+    from models import MailMessage as MailMessageModel
+
+    msg = db.query(MailMessageModel).filter(MailMessageModel.id == message_id).first()
+    if not msg:
+        raise HTTPException(status_code=404, detail="Message not found")
+    if msg.recipient_email != current_user.email:
+        raise HTTPException(
+            status_code=403, detail="Only the recipient can mark as read"
+        )
+    if not msg.is_read:
+        msg.is_read = True
+        db.add(msg)
+        db.commit()
+    return {"status": "ok", "message_id": msg.id, "is_read": msg.is_read}
+
+
+@app.get("/advisor/detailed")
+async def advisor_detailed(
+    days: int = Query(30, ge=1, le=120),
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(
+        require_role([UserRole.ADMIN, UserRole.STAFF])
+    ),
+):
+    """More comprehensive analytics view combining existing insights with extra breakdowns.
+
+    Returns keys: generated_at, window_days, totals, snapshots, insights, grade_distribution,
+    attendance_top_classes, store_performance, sentiment_distribution.
+    """
+    from sqlalchemy import func
+    from models import AttendanceStatus  # enum for attendance
+
+    result = generate_insights(db, days=days)
+    cutoff = datetime.utcnow() - timedelta(days=days)
+
+    # Grade distribution (letters)
+    grade_rows = (
+        db.query(db_models.Grade.grade_letter, func.count(db_models.Grade.id))
+        .filter(db_models.Grade.created_at >= cutoff)
+        .group_by(db_models.Grade.grade_letter)
+        .all()
+    )
+    grade_distribution = {(gl if gl else "UNKNOWN"): count for gl, count in grade_rows}
+
+    # Attendance top classes by present count
+    attendance_rows = (
+        db.query(
+            db_models.Class.name,
+            func.count(db_models.Attendance.id).label("present"),
+        )
+        .join(db_models.Attendance, db_models.Attendance.class_id == db_models.Class.id)
+        .filter(
+            db_models.Attendance.created_at >= cutoff,
+            db_models.Attendance.status == AttendanceStatus.PRESENT,
+        )
+        .group_by(db_models.Class.name)
+        .order_by(func.count(db_models.Attendance.id).desc())
+        .limit(10)
+        .all()
+    )
+    attendance_top_classes = [
+        {"class_name": name, "present_count": present}
+        for name, present in attendance_rows
+    ]
+
+    # Store performance (top items by revenue)
+    store_rows = (
+        db.query(
+            db_models.StoreItem.id,
+            db_models.StoreItem.title,
+            func.sum(db_models.OrderItem.quantity).label("qty"),
+            func.sum(db_models.OrderItem.subtotal).label("revenue"),
+        )
+        .join(
+            db_models.OrderItem, db_models.OrderItem.item_id == db_models.StoreItem.id
+        )
+        .join(db_models.Order, db_models.OrderItem.order_id == db_models.Order.id)
+        .filter(
+            db_models.Order.created_at >= cutoff,
+            db_models.Order.status == "completed",
+        )
+        .group_by(db_models.StoreItem.id, db_models.StoreItem.title)
+        .order_by(func.sum(db_models.OrderItem.subtotal).desc())
+        .limit(10)
+        .all()
+    )
+    store_performance = [
+        {
+            "item_id": row.id,
+            "title": row.title,
+            "quantity_sold": int(row.qty or 0),
+            "revenue": float(row.revenue or 0.0),
+        }
+        for row in store_rows
+    ]
+
+    # Sentiment distribution from reviews (very naive: rating buckets)
+    sentiment_rows = (
+        db.query(db_models.StoreReview.rating, func.count(db_models.StoreReview.id))
+        .filter(db_models.StoreReview.created_at >= cutoff)
+        .group_by(db_models.StoreReview.rating)
+        .all()
+    )
+    sentiment_distribution = {str(rating): count for rating, count in sentiment_rows}
+
+    return {
+        "generated_at": datetime.utcnow().isoformat(),
+        "window_days": days,
+        "totals": result["totals"],
+        "snapshots": result["snapshots"],
+        "insights": [
+            {
+                "id": i.id,
+                "category": i.category,
+                "insight_text": i.insight_text,
+                "score": i.score,
+                "created_at": i.created_at.isoformat() if i.created_at else None,
+            }
+            for i in result["insights"]
+        ],
+        "grade_distribution": grade_distribution,
+        "attendance_top_classes": attendance_top_classes,
+        "store_performance": store_performance,
+        "sentiment_distribution": sentiment_distribution,
+    }
 
 
 @app.get("/grades/student/{student_id}", response_model=List[Grade])
@@ -2424,6 +3913,244 @@ async def get_courses(
         q = q.filter(Course.teacher_id == teacher_id)
     courses = q.order_by(Course.created_at.desc()).all()
     return [Course.from_orm(c) for c in courses]
+
+
+# Messages & News Feed endpoints are implemented earlier in this file.
+# The implementation above provides moderation: only messages with
+# `approved==True` are returned by `GET /messages`. Non-admin posts
+# are stored with `approved=False` and can be reviewed via
+# `GET /messages/pending` (admin only). Admins may approve via
+# `POST /messages/{msg_id}/approve` or delete via `DELETE /messages/{msg_id}`.
+
+
+# =============================================================================
+# Store Analytics Endpoints
+# =============================================================================
+
+
+@app.get("/analytics/store")
+async def get_store_analytics(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    """Get store analytics data"""
+    # Mock analytics data - replace with real queries
+    analytics = {
+        "total_sales": 45780,
+        "total_orders": 123,
+        "popular_items": [
+            {"name": "School Uniform", "sales": 45, "revenue": 13500},
+            {"name": "Textbooks", "sales": 32, "revenue": 9600},
+            {"name": "Sports Equipment", "sales": 28, "revenue": 8400},
+            {"name": "Stationery", "sales": 67, "revenue": 6700},
+        ],
+        "recent_purchases": [
+            {
+                "student": "John Doe",
+                "item": "School Uniform",
+                "amount": 300,
+                "date": "2025-11-18",
+            },
+            {
+                "student": "Jane Smith",
+                "item": "Textbooks",
+                "amount": 250,
+                "date": "2025-11-17",
+            },
+            {
+                "student": "Mike Johnson",
+                "item": "Sports Equipment",
+                "amount": 150,
+                "date": "2025-11-16",
+            },
+        ],
+        "monthly_trend": {
+            "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+            "sales": [12000, 15000, 18000, 22000, 19000, 25000],
+        },
+    }
+    return analytics
+
+
+@app.get("/ai-advisor")
+async def get_ai_advisor_suggestions(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(require_role([UserRole.ADMIN])),
+):
+    """Get AI-generated business improvement suggestions"""
+    # Mock AI suggestions - replace with real AI integration
+    suggestions = {
+        "overall_score": 8.5,
+        "performance_summary": "Your institution is performing well with strong enrollment and high satisfaction rates.",
+        "suggestions": [
+            {
+                "category": "Academic Performance",
+                "score": 9.2,
+                "suggestion": "Consider implementing personalized learning paths to further improve student outcomes.",
+                "priority": "Medium",
+            },
+            {
+                "category": "Financial Management",
+                "score": 7.8,
+                "suggestion": "Optimize fee collection processes to reduce outstanding payments by 15%.",
+                "priority": "High",
+            },
+            {
+                "category": "Teacher Engagement",
+                "score": 8.9,
+                "suggestion": "Introduce professional development programs to maintain high teacher satisfaction.",
+                "priority": "Low",
+            },
+            {
+                "category": "Student Services",
+                "score": 8.3,
+                "suggestion": "Expand extracurricular activities to enhance student engagement.",
+                "priority": "Medium",
+            },
+        ],
+        "metrics": {
+            "student_satisfaction": 92,
+            "teacher_retention": 95,
+            "fee_collection_rate": 87,
+            "academic_performance": 89,
+        },
+    }
+    return suggestions
+
+
+# =============================================================================
+# E-Classroom & CBT Endpoints
+# =============================================================================
+
+
+class ClassroomCreate(BaseModel):
+    name: str
+    description: str = ""
+    platform: str  # "zoom", "googlemeet", "teams"
+    scheduled_time: Optional[datetime] = None
+
+
+@app.post("/classrooms")
+async def create_classroom(
+    classroom: ClassroomCreate,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(
+        require_role([UserRole.ADMIN, UserRole.TEACHER])
+    ),
+):
+    """Create a new virtual classroom"""
+    classroom_id = str(uuid.uuid4())
+
+    # Generate platform-specific links (mock implementation)
+    platform_links = {
+        "zoom": f"https://zoom.us/j/{classroom_id[:10]}",
+        "googlemeet": f"https://meet.google.com/{classroom_id[:10]}",
+        "teams": f"https://teams.microsoft.com/l/meetup-join/{classroom_id}",
+    }
+
+    db_classroom = db_models.VirtualClassroom(
+        id=classroom_id,
+        name=classroom.name,
+        description=classroom.description,
+        platform=classroom.platform,
+        platform_link=platform_links.get(classroom.platform, ""),
+        teacher_id=current_user.id,
+        scheduled_time=classroom.scheduled_time,
+        created_at=datetime.utcnow(),
+        is_active=True,
+    )
+
+    db.add(db_classroom)
+
+    try:
+        db.commit()
+        db.refresh(db_classroom)
+        return db_classroom
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500, detail=f"Failed to create classroom: {str(e)}"
+        )
+
+
+@app.get("/classrooms")
+async def get_classrooms(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Get all virtual classrooms"""
+    classrooms = (
+        db.query(db_models.VirtualClassroom)
+        .filter(db_models.VirtualClassroom.is_active == True)
+        .order_by(db_models.VirtualClassroom.created_at.desc())
+        .all()
+    )
+
+    return classrooms
+
+
+class CBTSubmission(BaseModel):
+    test_id: str
+    answers: dict
+    completion_time: int  # in seconds
+
+
+@app.post("/cbt/submit")
+async def submit_cbt(
+    submission: CBTSubmission,
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Submit CBT test results"""
+    submission_id = str(uuid.uuid4())
+
+    # Calculate score (mock implementation)
+    total_questions = len(submission.answers)
+    correct_answers = sum(
+        1 for answer in submission.answers.values() if answer == "correct"
+    )  # Mock
+    score = (correct_answers / total_questions) * 100 if total_questions > 0 else 0
+
+    db_submission = db_models.CBTSubmission(
+        id=submission_id,
+        user_id=current_user.id,
+        test_id=submission.test_id,
+        answers=submission.answers,
+        score=score,
+        completion_time=submission.completion_time,
+        submitted_at=datetime.utcnow(),
+    )
+
+    db.add(db_submission)
+
+    try:
+        db.commit()
+        db.refresh(db_submission)
+        return {
+            "submission_id": submission_id,
+            "score": score,
+            "status": "submitted",
+            "completion_time": submission.completion_time,
+        }
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to submit CBT: {str(e)}")
+
+
+@app.get("/cbt/completed")
+async def get_completed_cbts(
+    db: Session = Depends(get_db),
+    current_user: db_models.User = Depends(get_current_user),
+):
+    """Get completed CBT submissions"""
+    submissions = (
+        db.query(db_models.CBTSubmission)
+        .filter(db_models.CBTSubmission.user_id == current_user.id)
+        .order_by(db_models.CBTSubmission.submitted_at.desc())
+        .all()
+    )
+
+    return submissions
 
 
 # =============================================================================
